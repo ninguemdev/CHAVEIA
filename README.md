@@ -1,73 +1,84 @@
-# React + TypeScript + Vite
+# UTFPR Torneios
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema web acadêmico da UTFPR para organização de torneios, e-sports e competições gerais.
 
-Currently, two official plugins are available:
+O objetivo é oferecer uma plataforma clara, responsiva e acessível para organizadores criarem torneios, gerenciarem inscrições, participantes, equipes, partidas, resultados, rankings, chaves e disputas.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+- Vite
+- React
+- TypeScript
+- CSS próprio
+- ESLint
+- npm
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Comandos
 
-## Expanding the ESLint configuration
+Instalar dependências:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Rodar em desenvolvimento:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Validar lint:
+
+```bash
+npm run lint
+```
+
+Gerar build:
+
+```bash
+npm run build
+```
+
+## Documentação
+
+- [00 - Visão geral](docs/00-visao-geral.md)
+- [01 - Requisitos funcionais](docs/01-requisitos-funcionais.md)
+- [02 - Regras de torneios](docs/02-regras-de-torneios.md)
+- [03 - Formatos e algoritmos](docs/03-formatos-e-algoritmos.md)
+- [04 - Modelo de dados](docs/04-modelo-de-dados.md)
+- [05 - Fluxos de usuário](docs/05-fluxos-de-usuario.md)
+- [06 - Arquitetura](docs/06-arquitetura.md)
+- [07 - Rotas e telas](docs/07-rotas-e-telas.md)
+- [08 - API e contratos](docs/08-api-e-contratos.md)
+- [09 - UI/UX e design system](docs/09-ui-ux-design-system.md)
+- [10 - CSS, responsividade e acessibilidade](docs/10-css-responsividade-acessibilidade.md)
+- [11 - Testes e validação](docs/11-testes-e-validacao.md)
+- [12 - Roadmap MVP](docs/12-roadmap-mvp.md)
+- [13 - Checklist de code review](docs/13-checklist-code-review.md)
+
+## Escopo inicial
+
+O MVP deve priorizar:
+
+- Documentação e arquitetura clara.
+- Layout responsivo e acessível.
+- CRUD inicial de torneios.
+- Participantes, equipes e inscrições.
+- Mata-mata simples.
+- Resultados e ranking básico.
+- Pontos corridos.
+- Grupos + playoffs.
+- Disputas e auditoria.
+
+## Observação sobre documentos de referência
+
+O projeto cita como referências obrigatórias:
+
+- `Funcionamento de torneios.pdf`
+- `AGENTS.md`
+- `checklist-responsividade-design.md`
+- `code_review.md`
+- `frontend-boas-praticas.md`
+
+No estado atual do repositório, apenas `AGENTS.md` foi localizado. A documentação em `docs/` foi criada com base no `AGENTS.md` e no escopo informado para o projeto, e deve ser revisada quando os demais arquivos forem adicionados.
+

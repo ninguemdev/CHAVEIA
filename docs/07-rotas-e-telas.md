@@ -1,0 +1,36 @@
+# Rotas e telas
+
+As rotas abaixo são proposta inicial. A implementação pode começar sem roteador externo, mas deve manter esta estrutura como referência.
+
+| Rota | Tela | Objetivo | Usuário principal | Componentes | Estados obrigatórios |
+| --- | --- | --- | --- | --- | --- |
+| `/` | Landing page | Apresentar o sistema e torneios em destaque. | Visitante | Hero, lista de torneios, CTA. | vazio, carregando, erro, sucesso |
+| `/login` | Login/cadastro | Entrar ou criar conta. | Organizador, participante | Form, input, button, alert. | vazio, carregando, erro, sucesso |
+| `/dashboard` | Dashboard | Resumir torneios e pendências. | Organizador | Cards, tabela, ações rápidas. | vazio, carregando, erro, sucesso, sem permissão |
+| `/torneios` | Lista de torneios | Listar torneios públicos ou do usuário. | Visitante, organizador | TournamentCard, filtros, busca. | vazio, carregando, erro, sucesso |
+| `/torneios/novo` | Criar torneio | Criar rascunho. | Organizador | Form, steps, validation summary. | vazio, carregando, erro, sucesso, sem permissão |
+| `/torneios/:id/editar` | Editar torneio | Ajustar dados e regras. | Organizador | Form, tabs, settings panel. | carregando, erro, sucesso, sem permissão |
+| `/t/:slug` | Página pública do torneio | Exibir informações públicas. | Visitante | Header, tabs, bracket, ranking, matches. | vazio, carregando, erro, sucesso |
+| `/t/:slug/inscricao` | Inscrição | Inscrever participante/equipe. | Participante, capitão | Form, team builder, terms. | vazio, carregando, erro, sucesso |
+| `/torneios/:id/participantes` | Participantes | Gerenciar inscritos. | Organizador | Table, filters, status badge. | vazio, carregando, erro, sucesso, sem permissão |
+| `/torneios/:id/equipes` | Equipes | Gerenciar equipes e membros. | Organizador, capitão | TeamCard, member list, form. | vazio, carregando, erro, sucesso, sem permissão |
+| `/torneios/:id/chave` | Chave | Visualizar e gerenciar mata-mata. | Organizador, visitante | Bracket, MatchCard, status banner. | vazio, carregando, erro, sucesso |
+| `/torneios/:id/grupos` | Grupos | Visualizar grupos e classificação. | Organizador, visitante | GroupTabs, RankingTable, MatchList. | vazio, carregando, erro, sucesso |
+| `/torneios/:id/partidas` | Partidas | Listar agenda e status. | Organizador, participante | MatchCard, filters, calendar list. | vazio, carregando, erro, sucesso |
+| `/partidas/:id/resultado` | Resultado da partida | Enviar ou revisar resultado. | Capitão, jogador, organizador | ScoreForm, MatchSummary, dispute action. | carregando, erro, sucesso, sem permissão |
+| `/torneios/:id/ranking` | Ranking | Exibir classificação e critérios. | Todos | RankingTable, criteria list, alerts. | vazio, carregando, erro, sucesso |
+| `/torneios/:id/configuracoes` | Configurações | Ajustar formato, pontuação e regras. | Organizador | Tabs, settings forms. | carregando, erro, sucesso, sem permissão |
+| `/torneios/:id/disputas` | Disputas | Gerenciar contestações. | Organizador | DisputeList, decision modal. | vazio, carregando, erro, sucesso, sem permissão |
+| `/admin` | Admin | Administrar usuários, torneios e auditoria. | Administrador | Tables, audit log, filters. | vazio, carregando, erro, sucesso, sem permissão |
+
+## Regras gerais de tela
+
+- Cada página deve ter apenas um `h1`.
+- Títulos devem seguir hierarquia correta.
+- Ações primárias devem ser `button`.
+- Navegação deve usar `a` ou componente equivalente sem quebrar semântica.
+- Todos os formulários devem ter labels.
+- Estados de erro devem explicar o problema e sugerir ação.
+- Estados vazios devem indicar o próximo passo.
+- Estados sem permissão não devem esconder completamente o motivo.
+
