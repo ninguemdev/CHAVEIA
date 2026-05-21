@@ -83,7 +83,7 @@ Observação: a tabela `auth.users` é gerenciada pelo Supabase. O projeto não 
 | slug | string | Sim | - | URL amigável. |
 | description | string | Opcional | - | Descrição curta. |
 | organizerId | uuid | Sim | Profile | Responsável autorizado. |
-| status | enum | Sim | - | draft, published, registration_open, running, finished, cancelled. |
+| status | enum | Sim | - | draft, registrations_open, registrations_closed, ongoing, finished, cancelled. |
 | startsAt | datetime | Opcional | Match | Início previsto. |
 | endsAt | datetime | Opcional | - | Fim previsto. |
 | createdBy | uuid | Sim | Profile | Usuário que criou o torneio. |
@@ -344,7 +344,7 @@ Observação: a tabela `auth.users` é gerenciada pelo Supabase. O projeto não 
 
 ## Status possíveis
 
-- Torneio: draft, published, registration_open, registration_closed, running, finished, cancelled.
+- Torneio: draft, registrations_open, registrations_closed, ongoing, finished, cancelled.
 - Pedido de criação de torneio: pending, approved, rejected, cancelled.
 - Participante: pending, approved, checked_in, withdrawn, disqualified.
 - Inscrição: pending, approved, rejected, cancelled.

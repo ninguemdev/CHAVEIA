@@ -41,6 +41,11 @@ import { MyAccountPage } from './pages/auth/MyAccountPage'
 import { PasswordRecoveryPage } from './pages/auth/PasswordRecoveryPage'
 import { RequestTournamentCreatorPage } from './pages/auth/RequestTournamentCreatorPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
+import { CreateTournamentPage as SupabaseCreateTournamentPage } from './pages/tournaments/CreateTournamentPage'
+import { EditTournamentPage as SupabaseEditTournamentPage } from './pages/tournaments/EditTournamentPage'
+import { PublicTournamentPage as SupabasePublicTournamentPage } from './pages/tournaments/PublicTournamentPage'
+import { TournamentParticipantsPage as SupabaseTournamentParticipantsPage } from './pages/tournaments/TournamentParticipantsPage'
+import { TournamentsPage as SupabaseTournamentsPage } from './pages/tournaments/TournamentsPage'
 
 type PageId =
   | 'home'
@@ -93,6 +98,7 @@ function App() {
 
 function AppRouter() {
   const [route, setRoute] = useState(() => window.location.hash.replace(/^#/, '') || 'home')
+  const normalizedRoute = route.startsWith('/') ? route : `/${route}`
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -103,7 +109,46 @@ function AppRouter() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  switch (route) {
+  if (normalizedRoute === '/torneios') {
+    return <SupabaseTournamentsPage />
+  }
+
+  if (normalizedRoute === '/torneios/novo') {
+    return (
+      <ProtectedRoute>
+        <SupabaseCreateTournamentPage />
+      </ProtectedRoute>
+    )
+  }
+
+  const editTournamentMatch = normalizedRoute.match(/^\/torneios\/([^/]+)\/editar$/)
+  if (editTournamentMatch) {
+    return (
+      <ProtectedRoute>
+        <SupabaseEditTournamentPage tournamentId={decodeURIComponent(editTournamentMatch[1])} />
+      </ProtectedRoute>
+    )
+  }
+
+  const participantsTournamentMatch = normalizedRoute.match(/^\/torneios\/([^/]+)\/participantes$/)
+  if (participantsTournamentMatch) {
+    return (
+      <SupabaseTournamentParticipantsPage
+        tournamentId={decodeURIComponent(participantsTournamentMatch[1])}
+      />
+    )
+  }
+
+  const publicTournamentMatch = normalizedRoute.match(/^\/torneios\/([^/]+)$/)
+  if (publicTournamentMatch) {
+    return (
+      <SupabasePublicTournamentPage
+        tournamentId={decodeURIComponent(publicTournamentMatch[1])}
+      />
+    )
+  }
+
+  switch (normalizedRoute) {
     case '/login':
       return <LoginPage />
     case '/cadastro':
@@ -198,8 +243,26 @@ function TournamentDemoApp() {
   }, [])
 
   function navigateTo(page: PageId) {
+    if (page === 'tournaments') {
+      window.location.hash = '#/torneios'
+      setIsMobileMenuOpen(false)
+      return
+    }
+
     if (page === 'create' && !canCreateTournaments) {
       window.location.hash = session ? '#/solicitar-criacao-torneio' : '#/login'
+      setIsMobileMenuOpen(false)
+      return
+    }
+
+    if (page === 'create') {
+      window.location.hash = '#/torneios/novo'
+      setIsMobileMenuOpen(false)
+      return
+    }
+
+    if (page === 'public') {
+      window.location.hash = '#/torneios'
       setIsMobileMenuOpen(false)
       return
     }

@@ -13,6 +13,16 @@ export type TournamentCreatorRequestStatus =
   | 'rejected'
   | 'cancelled'
 
+export type TournamentStatus =
+  | 'draft'
+  | 'registrations_open'
+  | 'registrations_closed'
+  | 'ongoing'
+  | 'finished'
+  | 'cancelled'
+
+export type TournamentRegistrationStatus = 'registered' | 'cancelled'
+
 export type Profile = {
   id: string
   email: string | null
@@ -32,6 +42,33 @@ export type TournamentCreatorRequest = {
   reviewed_by: string | null
   reviewed_at: string | null
   admin_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type Tournament = {
+  id: string
+  name: string
+  slug: string
+  modality: string
+  description: string | null
+  campus: string | null
+  format: string
+  status: TournamentStatus
+  max_participants: number
+  starts_at: string | null
+  ends_at: string | null
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export type TournamentRegistration = {
+  id: string
+  tournament_id: string
+  user_id: string
+  display_name: string
+  status: TournamentRegistrationStatus
   created_at: string
   updated_at: string
 }
@@ -65,6 +102,49 @@ export type Database = {
         >
         Relationships: []
       }
+      tournaments: {
+        Row: Tournament
+        Insert: Pick<
+          Tournament,
+          'name' | 'slug' | 'modality' | 'format' | 'status' | 'created_by'
+        > &
+          Partial<
+            Pick<
+              Tournament,
+              | 'description'
+              | 'campus'
+              | 'max_participants'
+              | 'starts_at'
+              | 'ends_at'
+            >
+          >
+        Update: Partial<
+          Pick<
+            Tournament,
+            | 'name'
+            | 'slug'
+            | 'modality'
+            | 'description'
+            | 'campus'
+            | 'format'
+            | 'status'
+            | 'max_participants'
+            | 'starts_at'
+            | 'ends_at'
+          >
+        >
+        Relationships: []
+      }
+      tournament_registrations: {
+        Row: TournamentRegistration
+        Insert: Pick<
+          TournamentRegistration,
+          'tournament_id' | 'user_id' | 'display_name'
+        > &
+          Partial<Pick<TournamentRegistration, 'status'>>
+        Update: Partial<Pick<TournamentRegistration, 'display_name' | 'status'>>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -82,6 +162,8 @@ export type Database = {
     Enums: {
       user_role: UserRole
       request_status: TournamentCreatorRequestStatus
+      tournament_status: TournamentStatus
+      tournament_registration_status: TournamentRegistrationStatus
     }
     CompositeTypes: Record<string, never>
   }

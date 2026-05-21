@@ -436,6 +436,32 @@ dd {
   background: var(--color-surface-muted);
 }
 
+.badge-tournament-draft {
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+}
+
+.badge-tournament-registrations_open {
+  color: var(--color-accent-strong);
+  background: var(--color-accent-soft);
+}
+
+.badge-tournament-registrations_closed,
+.badge-tournament-ongoing {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+}
+
+.badge-tournament-finished {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.badge-tournament-cancelled {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
 .toolbar {
   display: grid;
   gap: var(--space-3);
@@ -1182,6 +1208,24 @@ tbody tr:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+
+.danger-zone {
+  border-color: rgb(180 35 24 / 0.35);
+  background: var(--color-danger-soft);
+}
+
+.registration-state {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.registration-state p,
+.subtle-note {
+  color: var(--color-text-muted);
 }
 
 @keyframes spin {

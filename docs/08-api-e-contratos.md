@@ -77,11 +77,11 @@ Quando Supabase for implementado:
 ## Criar torneio
 
 - **Ação:** `createTournament`
-- **Entrada:** `{ name, modality, description, startsAt, endsAt, settings }`
+- **Entrada:** `{ name, modality, description, campus, format, status, maxParticipants, startsAt, endsAt }`
 - **Saída:** `{ tournament }`
-- **Validações:** nome obrigatório; datas coerentes; limites válidos.
+- **Validações:** nome obrigatório; datas coerentes; limite de participantes válido; `created_by = auth.uid()`.
 - **Erros possíveis:** `VALIDATION_ERROR`, `PERMISSION_DENIED`.
-- **Permissões:** admin ou usuário com permissão aprovada para criar torneios; RLS deve validar.
+- **Permissões:** admin ou usuário com permissão aprovada para criar torneios; RLS valida com `public.can_create_tournaments()`.
 
 ## Atualizar torneio
 
@@ -90,16 +90,16 @@ Quando Supabase for implementado:
 - **Saída:** `{ tournament }`
 - **Validações:** torneio existente; campos permitidos por status.
 - **Erros possíveis:** `NOT_FOUND`, `VALIDATION_ERROR`, `TOURNAMENT_LOCKED`.
-- **Permissões:** usuário autorizado no torneio ou admin. Admin pode editar torneios em andamento/encerrados com justificativa e auditoria.
+- **Permissões:** criador aprovado pode editar apenas torneios que criou; admin pode editar qualquer torneio, inclusive em andamento.
 
 ## Inscrever participante
 
 - **Ação:** `registerParticipant`
-- **Entrada:** `{ tournamentId, profileId, teamId?, displayName }`
+- **Entrada:** `{ tournamentId, profileId, displayName }`
 - **Saída:** `{ registration, participant }`
-- **Validações:** inscrições abertas; limite não excedido; participante não duplicado.
-- **Erros possíveis:** `REGISTRATION_CLOSED`, `DUPLICATED_PARTICIPANT`, `LIMIT_REACHED`.
-- **Permissões:** usuário autenticado elegível, capitão, usuário autorizado no torneio ou admin.
+- **Validações:** torneio com status `registrations_open`; limite não excedido; usuário não possui inscrição ativa duplicada.
+- **Erros possíveis:** `REGISTRATION_CLOSED`, `DUPLICATED_PARTICIPANT`, `LIMIT_REACHED`, `PERMISSION_DENIED`.
+- **Permissões:** usuário autenticado pode inscrever a si mesmo; lista pública não expõe RA nem email.
 
 ## Criar equipe
 

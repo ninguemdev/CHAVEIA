@@ -523,3 +523,414 @@ create policy "requests_review_admin"
 
 comment on policy "requests_review_admin" on public.tournament_creator_requests is
   'Permite que admins aprovem/rejeitem pedidos. Usuários comuns não conseguem virar admin por esta tabela.';
+
+-- ---------------------------------------------------------------------------
+-- Módulo inicial de torneios e inscrições
+-- ---------------------------------------------------------------------------
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    where typname = 'tournament_status'
+      and typnamespace = 'public'::regnamespace
+  ) then
+    create type public.tournament_status as enum (
+      'draft',
+      'registrations_open',
+      'registrations_closed',
+      'ongoing',
+      'finished',
+      'cancelled'
+    );
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    where typname = 'tournament_registration_status'
+      and typnamespace = 'public'::regnamespace
+  ) then
+    create type public.tournament_registration_status as enum (
+      'registered',
+      'cancelled'
+    );
+  end if;
+end
+$$;
+
+create table if not exists public.tournaments (
+  id uuid primary key default extensions.gen_random_uuid(),
+  name text not null,
+  slug text not null unique,
+  modality text not null,
+  description text,
+  campus text,
+  format text not null default 'single_elimination',
+  status public.tournament_status not null default 'draft',
+  max_participants integer not null default 16,
+  starts_at date,
+  ends_at date,
+  created_by uuid not null references public.profiles(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint tournaments_name_not_blank check (length(btrim(name)) > 0),
+  constraint tournaments_slug_not_blank check (length(btrim(slug)) > 0),
+  constraint tournaments_modality_not_blank check (length(btrim(modality)) > 0),
+  constraint tournaments_max_participants_positive check (max_participants > 0),
+  constraint tournaments_dates_order check (
+    ends_at is null
+    or starts_at is null
+    or ends_at >= starts_at
+  )
+);
+
+comment on table public.tournaments is
+  'Torneios do sistema. Drafts são privados para admin/criador; demais status podem ser visualizados publicamente.';
+comment on column public.tournaments.created_by is
+  'Profile que criou o torneio. Usuário aprovado só pode editar torneios criados por ele.';
+comment on column public.tournaments.status is
+  'Status operacional do torneio: draft, registrations_open, registrations_closed, ongoing, finished ou cancelled.';
+
+create table if not exists public.tournament_registrations (
+  id uuid primary key default extensions.gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  display_name text not null,
+  status public.tournament_registration_status not null default 'registered',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint tournament_registrations_display_name_not_blank check (length(btrim(display_name)) > 0)
+);
+
+comment on table public.tournament_registrations is
+  'Inscrições de usuários em torneios. O MVP usa display_name e não expõe RA/e-mail na lista pública.';
+comment on column public.tournament_registrations.status is
+  'registered para inscrição ativa; cancelled para cancelamento preservando histórico.';
+
+create unique index if not exists tournament_registrations_one_active_per_user
+  on public.tournament_registrations (tournament_id, user_id)
+  where status = 'registered';
+
+create index if not exists tournaments_status_idx
+  on public.tournaments (status);
+
+create index if not exists tournaments_created_by_idx
+  on public.tournaments (created_by);
+
+create index if not exists tournament_registrations_tournament_idx
+  on public.tournament_registrations (tournament_id, status);
+
+-- Protege campos de autoria do torneio. Admins podem editar qualquer torneio,
+-- mas mesmo admins não devem trocar id/created_at em update comum.
+create or replace function public.protect_tournament_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.id is distinct from old.id then
+    raise exception 'O id do torneio não pode ser alterado.';
+  end if;
+
+  if new.created_at is distinct from old.created_at then
+    raise exception 'created_at do torneio não pode ser alterado.';
+  end if;
+
+  if new.created_by is distinct from old.created_by then
+    raise exception 'created_by do torneio não pode ser alterado.';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Garante que inscrições ativas só sejam criadas quando o torneio estiver
+-- com inscrições abertas. A regra fica no banco, não apenas no React.
+create or replace function public.validate_tournament_registration_write()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_tournament_status public.tournament_status;
+  current_max_participants integer;
+  current_registration_count integer;
+begin
+  if TG_OP = 'UPDATE' then
+    if new.id is distinct from old.id then
+      raise exception 'O id da inscrição não pode ser alterado.';
+    end if;
+
+    if new.tournament_id is distinct from old.tournament_id then
+      raise exception 'O torneio da inscrição não pode ser alterado.';
+    end if;
+
+    if new.user_id is distinct from old.user_id then
+      raise exception 'O usuário da inscrição não pode ser alterado.';
+    end if;
+  end if;
+
+  if new.status = 'registered'::public.tournament_registration_status then
+    select status, max_participants
+    into current_tournament_status, current_max_participants
+    from public.tournaments
+    where id = new.tournament_id;
+
+    if current_tournament_status <> 'registrations_open'::public.tournament_status then
+      raise exception 'Inscrições só são permitidas quando o torneio está com inscrições abertas.';
+    end if;
+
+    select count(*)
+    into current_registration_count
+    from public.tournament_registrations
+    where tournament_id = new.tournament_id
+      and status = 'registered'::public.tournament_registration_status
+      and (
+        TG_OP = 'INSERT'
+        or id <> new.id
+      );
+
+    if current_registration_count >= current_max_participants then
+      raise exception 'O torneio atingiu o limite de participantes.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists tournaments_set_updated_at on public.tournaments;
+create trigger tournaments_set_updated_at
+  before update on public.tournaments
+  for each row
+  execute function public.set_updated_at();
+
+drop trigger if exists tournaments_protect_update on public.tournaments;
+create trigger tournaments_protect_update
+  before update on public.tournaments
+  for each row
+  execute function public.protect_tournament_update();
+
+drop trigger if exists tournament_registrations_set_updated_at
+  on public.tournament_registrations;
+create trigger tournament_registrations_set_updated_at
+  before update on public.tournament_registrations
+  for each row
+  execute function public.set_updated_at();
+
+drop trigger if exists tournament_registrations_validate_insert
+  on public.tournament_registrations;
+create trigger tournament_registrations_validate_insert
+  before insert on public.tournament_registrations
+  for each row
+  execute function public.validate_tournament_registration_write();
+
+drop trigger if exists tournament_registrations_validate_update
+  on public.tournament_registrations;
+create trigger tournament_registrations_validate_update
+  before update on public.tournament_registrations
+  for each row
+  execute function public.validate_tournament_registration_write();
+
+alter table public.tournaments enable row level security;
+alter table public.tournament_registrations enable row level security;
+
+grant usage on schema public to anon;
+grant select on public.tournaments to anon;
+grant select on public.tournament_registrations to anon;
+grant select, insert, update, delete on public.tournaments to authenticated;
+grant select, insert, update, delete on public.tournament_registrations to authenticated;
+
+drop policy if exists "tournaments_select_public" on public.tournaments;
+drop policy if exists "tournaments_select_owner" on public.tournaments;
+drop policy if exists "tournaments_select_admin" on public.tournaments;
+drop policy if exists "tournaments_insert_creator" on public.tournaments;
+drop policy if exists "tournaments_update_owner" on public.tournaments;
+drop policy if exists "tournaments_update_admin" on public.tournaments;
+drop policy if exists "tournaments_delete_admin" on public.tournaments;
+
+-- Qualquer visitante pode ler torneios publicados, isto é, fora de draft.
+create policy "tournaments_select_public"
+  on public.tournaments
+  for select
+  to anon, authenticated
+  using (status <> 'draft'::public.tournament_status);
+
+comment on policy "tournaments_select_public" on public.tournaments is
+  'Permite leitura pública de torneios que não estão em draft.';
+
+-- Criador autenticado pode ler seus próprios torneios, inclusive draft.
+create policy "tournaments_select_owner"
+  on public.tournaments
+  for select
+  to authenticated
+  using (created_by = auth.uid());
+
+comment on policy "tournaments_select_owner" on public.tournaments is
+  'Permite ao criador ver os próprios torneios.';
+
+-- Admin vê todos os torneios.
+create policy "tournaments_select_admin"
+  on public.tournaments
+  for select
+  to authenticated
+  using (public.is_admin());
+
+comment on policy "tournaments_select_admin" on public.tournaments is
+  'Permite que admin global visualize todos os torneios.';
+
+-- Admin ou usuário com pedido aprovado pode criar torneio.
+create policy "tournaments_insert_creator"
+  on public.tournaments
+  for insert
+  to authenticated
+  with check (
+    created_by = auth.uid()
+    and public.can_create_tournaments()
+  );
+
+comment on policy "tournaments_insert_creator" on public.tournaments is
+  'Permite criar torneio para admin ou usuário com pedido approved; usuário aprovado não vira admin.';
+
+-- Usuário aprovado só edita torneios criados por ele.
+create policy "tournaments_update_owner"
+  on public.tournaments
+  for update
+  to authenticated
+  using (
+    created_by = auth.uid()
+    and public.can_create_tournaments()
+  )
+  with check (
+    created_by = auth.uid()
+    and public.can_create_tournaments()
+  );
+
+comment on policy "tournaments_update_owner" on public.tournaments is
+  'Usuário aprovado pode editar apenas torneios próprios.';
+
+-- Admin pode alterar qualquer torneio, inclusive em andamento.
+create policy "tournaments_update_admin"
+  on public.tournaments
+  for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+comment on policy "tournaments_update_admin" on public.tournaments is
+  'Admin global pode editar qualquer torneio em qualquer status.';
+
+-- Excluir torneio fica restrito ao admin global no MVP.
+create policy "tournaments_delete_admin"
+  on public.tournaments
+  for delete
+  to authenticated
+  using (public.is_admin());
+
+comment on policy "tournaments_delete_admin" on public.tournaments is
+  'Permite exclusão de torneio apenas para admin global.';
+
+drop policy if exists "registrations_select_public" on public.tournament_registrations;
+drop policy if exists "registrations_select_owner_tournament_admin" on public.tournament_registrations;
+drop policy if exists "registrations_insert_open_tournament" on public.tournament_registrations;
+drop policy if exists "registrations_cancel_own" on public.tournament_registrations;
+drop policy if exists "registrations_update_admin" on public.tournament_registrations;
+drop policy if exists "registrations_delete_admin" on public.tournament_registrations;
+
+-- Lista pública de participantes só aparece para torneios públicos.
+create policy "registrations_select_public"
+  on public.tournament_registrations
+  for select
+  to anon, authenticated
+  using (
+    exists (
+      select 1
+      from public.tournaments t
+      where t.id = tournament_id
+        and t.status <> 'draft'::public.tournament_status
+    )
+  );
+
+comment on policy "registrations_select_public" on public.tournament_registrations is
+  'Permite visualizar participantes de torneios públicos sem expor dados sensíveis.';
+
+-- Criador do torneio e admin também podem ver inscrições de drafts próprios.
+create policy "registrations_select_owner_tournament_admin"
+  on public.tournament_registrations
+  for select
+  to authenticated
+  using (
+    public.is_admin()
+    or exists (
+      select 1
+      from public.tournaments t
+      where t.id = tournament_id
+        and t.created_by = auth.uid()
+    )
+  );
+
+comment on policy "registrations_select_owner_tournament_admin" on public.tournament_registrations is
+  'Permite ao admin e ao criador ver inscrições de torneios sob sua gestão.';
+
+-- Usuário autenticado pode se inscrever apenas em torneio com inscrições abertas.
+create policy "registrations_insert_open_tournament"
+  on public.tournament_registrations
+  for insert
+  to authenticated
+  with check (
+    user_id = auth.uid()
+    and status = 'registered'::public.tournament_registration_status
+    and exists (
+      select 1
+      from public.tournaments t
+      where t.id = tournament_id
+        and t.status = 'registrations_open'::public.tournament_status
+    )
+  );
+
+comment on policy "registrations_insert_open_tournament" on public.tournament_registrations is
+  'Bloqueia inscrição fora do status registrations_open.';
+
+-- Usuário pode cancelar a própria inscrição; não pode mover para outro usuário.
+create policy "registrations_cancel_own"
+  on public.tournament_registrations
+  for update
+  to authenticated
+  using (
+    user_id = auth.uid()
+    and status = 'registered'::public.tournament_registration_status
+  )
+  with check (
+    user_id = auth.uid()
+    and status = 'cancelled'::public.tournament_registration_status
+  );
+
+comment on policy "registrations_cancel_own" on public.tournament_registrations is
+  'Permite cancelar apenas a própria inscrição ativa.';
+
+create policy "registrations_update_admin"
+  on public.tournament_registrations
+  for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+comment on policy "registrations_update_admin" on public.tournament_registrations is
+  'Admin pode ajustar inscrições quando necessário, respeitando triggers de integridade.';
+
+create policy "registrations_delete_admin"
+  on public.tournament_registrations
+  for delete
+  to authenticated
+  using (public.is_admin());
+
+comment on policy "registrations_delete_admin" on public.tournament_registrations is
+  'Permite exclusão física de inscrição apenas para admin global.';
