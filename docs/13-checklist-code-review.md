@@ -82,7 +82,15 @@ O arquivo `code_review.md` ainda não está presente no repositório. Este check
 ## Segurança básica
 
 - Usuário sem permissão não executa ação restrita.
+- Permissões sensíveis são validadas no banco por RLS, policies ou RPCs, não apenas na interface.
+- Supabase Auth gerencia senhas; o projeto não cria campo próprio de senha ou hash.
+- Nenhuma chave privada, service role key ou segredo aparece no front-end.
+- Apenas variáveis públicas adequadas são usadas no cliente.
+- Tabelas importantes têm RLS habilitado.
+- Usuário comum não consegue alterar `role`, `can_create_tournaments` ou dados de outros usuários.
+- Admin consegue executar ações globais apenas com auditoria e justificativa quando necessário.
 - Dados sensíveis não aparecem em página pública.
+- RA, e-mail e dados administrativos são protegidos por permissão.
 - Inputs são validados.
 - Ações destrutivas pedem confirmação.
 - Correções críticas geram auditoria.
@@ -102,4 +110,3 @@ O arquivo `code_review.md` ainda não está presente no repositório. Este check
 - Funções de domínio têm testes.
 - Documentação é atualizada junto da mudança.
 - Mudanças grandes são divididas em etapas revisáveis.
-

@@ -59,10 +59,47 @@ Garantir que regras de torneio, ranking, geração de partidas, permissões e in
 ## Testes de permissões
 
 - Visitante não cria torneio.
+- Usuário comum cria conta, faz login e edita apenas o próprio perfil.
+- Usuário comum escolhe apenas `avatar_key` permitido.
+- Usuário comum informa RA sem expor esse dado publicamente.
+- Usuário comum não altera dados de outro usuário.
+- Usuário comum não altera `role`, `can_create_tournaments` ou configurações globais.
+- Usuário comum solicita permissão para criar torneios.
+- Admin aprova ou rejeita pedido de criação de torneio.
+- Usuário aprovado cria torneio.
+- Usuário não aprovado não cria torneio mesmo tentando chamada direta.
 - Participante não corrige resultado confirmado sem permissão.
 - Capitão envia resultado da própria equipe.
-- Organizador gerencia torneio próprio.
+- Usuário autorizado gerencia torneio próprio.
 - Admin acessa auditoria.
+- Admin altera torneio em andamento ou encerrado com justificativa.
+- Admin resolve disputa e edita resultado com auditoria.
+
+## Testes de autenticação e segurança
+
+- Cadastro com e-mail e senha via Supabase Auth.
+- Login com credenciais válidas.
+- Login recusado com senha inválida.
+- Logout encerra sessão.
+- Recuperação de senha usa fluxo do provedor.
+- Nenhuma tabela própria contém senha ou hash de senha.
+- Nenhuma chave privada aparece no front-end, bundle, `.env` público ou código versionado.
+- Apenas URL pública e chave anon do Supabase podem ser usadas no cliente.
+
+## Testes de RLS e banco
+
+Quando Supabase for implementado, criar testes ou validações manuais com usuários diferentes:
+
+- RLS habilitado em `profiles`, `tournaments`, `registrations`, `teams`, `matches`, `match_results`, `disputes`, `audit_logs`, `global_settings` e `tournament_creator_requests`.
+- Usuário A não lê dados privados do usuário B.
+- Usuário A não atualiza perfil do usuário B.
+- Usuário comum não altera `profiles.role`.
+- Usuário comum não atualiza `global_settings`.
+- Usuário comum não edita torneio sem autorização.
+- Admin consegue ler dados administrativos.
+- Admin consegue alterar torneio em andamento/encerrado com auditoria.
+- Escrita direta no banco sem permissão é negada por policy, mesmo que a interface esconda o botão.
+- RPCs sensíveis registram `AuditLog` na mesma transação.
 
 ## Testes de formulário
 
@@ -112,6 +149,17 @@ Verificar:
 - Confirma resultado.
 - Ranking/chave atualiza.
 - Torneio é finalizado.
+
+## Testes de fluxo completo com autenticação
+
+- Usuário cria conta.
+- Usuário edita perfil com RA e avatar pré-definido.
+- Usuário solicita permissão para criar torneios.
+- Admin aprova o pedido.
+- Usuário cria torneio.
+- Usuário abre inscrições.
+- Participante se inscreve.
+- Admin resolve disputa e confirma auditoria.
 
 ## Casos específicos obrigatórios
 
@@ -165,4 +213,3 @@ Verificar:
 - Deve aplicar placar padrão.
 - Deve registrar justificativa.
 - Deve permitir contestação quando dentro da regra.
-

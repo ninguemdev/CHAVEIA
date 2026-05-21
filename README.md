@@ -10,6 +10,7 @@ O objetivo é oferecer uma plataforma clara, responsiva e acessível para organi
 - React
 - TypeScript
 - CSS próprio
+- Supabase recomendado para autenticação, PostgreSQL e Row Level Security
 - ESLint
 - npm
 
@@ -61,6 +62,10 @@ npm run build
 O MVP deve priorizar:
 
 - Documentação e arquitetura clara.
+- Autenticação com email e senha via Supabase Auth.
+- Perfis `admin` e `user`.
+- Perfil com RA e avatar pré-definido por `avatar_key`.
+- Permissões validadas no banco com Row Level Security.
 - Layout responsivo e acessível.
 - CRUD inicial de torneios.
 - Participantes, equipes e inscrições.
@@ -82,3 +87,13 @@ O projeto cita como referências obrigatórias:
 
 No estado atual do repositório, apenas `AGENTS.md` foi localizado. A documentação em `docs/` foi criada com base no `AGENTS.md` e no escopo informado para o projeto, e deve ser revisada quando os demais arquivos forem adicionados.
 
+## Segurança e autenticação
+
+O sistema deve usar Supabase como solução recomendada para autenticação, banco PostgreSQL e Row Level Security.
+
+- Não armazenar senha em tabela própria.
+- Não expor chaves privadas no front-end.
+- Usar RLS nas tabelas importantes.
+- Validar permissões no banco, não apenas na interface.
+- Admins são administradores globais.
+- Usuários comuns podem editar apenas o próprio perfil, inscrever-se em torneios e solicitar permissão para criar torneios.

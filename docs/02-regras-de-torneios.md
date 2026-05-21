@@ -8,6 +8,7 @@ Um torneio é definido por:
 
 - Nome, modalidade e descrição.
 - Organizador responsável.
+- Usuários autorizados a administrar o torneio.
 - Janela de inscrições.
 - Participantes ou equipes elegíveis.
 - Formato competitivo.
@@ -18,6 +19,7 @@ Um torneio é definido por:
 - Premiação, classificação ou objetivo final.
 - Regras de W.O., atraso, contestação e correção.
 - Status de publicação das tabelas, chaves e rankings.
+- Regras de permissão para criação, edição, correção e ações administrativas.
 
 ## Decisões do organizador
 
@@ -35,6 +37,20 @@ Antes de publicar um torneio, o organizador deve decidir:
 - Como resultados serão enviados e confirmados.
 - Quais critérios de desempate serão aplicados.
 - Como disputas serão resolvidas.
+- Quais ações exigem aprovação de admin.
+- Quais dados ficarão públicos e quais ficarão restritos a usuários autenticados.
+
+## Regras de autenticação e autorização
+
+- O sistema deve ter autenticação com email e senha via Supabase Auth.
+- Senhas não devem ser armazenadas manualmente em tabelas próprias.
+- Existem dois tipos principais de usuário: `admin` e `user`.
+- `admin` é administrador global do site e pode agir sobre configurações globais, torneios em andamento ou encerrados, pedidos, resultados, disputas e dados administrativos.
+- `user` é usuário comum autenticado e pode editar apenas o próprio perfil, informar RA, escolher `avatar_key`, visualizar torneios públicos, inscrever-se e solicitar permissão para criar torneios.
+- Usuários comuns não podem alterar dados de outros usuários, configurações globais ou torneios sem autorização explícita.
+- A permissão para criar torneios deve ser solicitada pelo usuário e aprovada ou rejeitada por admin.
+- A interface pode ocultar ações sem permissão, mas a regra definitiva deve estar no banco por Row Level Security, policies ou funções RPC protegidas.
+- Toda ação administrativa sensível deve registrar usuário, data, entidade afetada, valor anterior quando aplicável, valor novo e justificativa.
 
 ## Formato, seeding, draw, scheduling e ranking
 
@@ -75,6 +91,8 @@ As regras devem reduzir incentivos para perder de propósito, manipular saldo ou
 - Participante individual deve ter nome exibível e contato ou vínculo com perfil.
 - Participantes podem ter status: pendente, aprovado, recusado, confirmado, desistente ou desclassificado.
 - Participantes desistentes não devem receber novos agendamentos.
+- Participantes autenticados só podem alterar dados próprios ou dados de equipe quando forem capitães/autorizados.
+- RA e dados de contato não devem aparecer em páginas públicas sem necessidade explícita.
 
 ## Regras para equipes
 
@@ -83,6 +101,7 @@ As regras devem reduzir incentivos para perder de propósito, manipular saldo ou
 - O número de membros deve respeitar limites do torneio.
 - Alterações de escalação devem ser bloqueadas após prazo definido ou registradas em auditoria.
 - Uma equipe pode ser desclassificada por W.O. repetido, irregularidade ou decisão administrativa justificada.
+- Admins podem corrigir equipe ou escalação excepcionalmente, inclusive em torneios em andamento ou encerrados, desde que registrem justificativa.
 
 ## Regras para partidas
 
@@ -126,7 +145,8 @@ As regras devem reduzir incentivos para perder de propósito, manipular saldo ou
 
 ## Regras para troca/correção de resultado
 
-- Correções exigem permissão de organizador.
+- Correções exigem permissão de usuário autorizado no torneio ou admin.
+- Admins podem corrigir resultados em torneios em andamento ou encerrados quando houver justificativa administrativa.
 - Toda correção deve registrar valor anterior, valor novo, usuário, data e justificativa.
 - Correção pode recalcular ranking, avanço de fase e partidas dependentes.
 - Se a correção afetar partidas futuras já realizadas, o sistema deve alertar o organizador.
@@ -139,3 +159,11 @@ As regras devem reduzir incentivos para perder de propósito, manipular saldo ou
 - Alterações após publicação devem gerar auditoria.
 - Ranking nunca deve esconder empate não resolvido.
 
+## Regras de banco e segurança
+
+- Supabase é a solução recomendada para autenticação, banco PostgreSQL, RLS e controle de acesso.
+- Todas as tabelas importantes devem ter Row Level Security habilitado.
+- Policies devem garantir que usuários comuns leiam apenas dados públicos, próprios ou vinculados às equipes/torneios em que participam.
+- Policies devem garantir que somente admins ou usuários autorizados alterem torneios, partidas, resultados e disputas.
+- Chaves privadas e service role keys nunca devem ser usadas no front-end.
+- Validações de permissão devem ser testadas com chamadas diretas ao banco/API, não apenas pela interface.

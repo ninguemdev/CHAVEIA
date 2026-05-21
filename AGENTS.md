@@ -8,6 +8,7 @@ Este projeto é um sistema web acadêmico da UTFPR para organização de torneio
 - React
 - TypeScript
 - CSS próprio
+- Supabase como solução recomendada para autenticação, banco PostgreSQL e Row Level Security
 - GitHub para versionamento
 - Notion para organização
 - Codex para auxílio no desenvolvimento
@@ -18,6 +19,7 @@ Instalar dependências:
 
 ```bash
 npm install
+```
 
 
 
@@ -31,6 +33,8 @@ Sempre siga estas regras:
 
 Criar uma plataforma completa para torneios, com foco em:
 
+- Autenticação com email e senha.
+- Perfis de usuário e permissões.
 - Cadastro de torneios.
 - Cadastro de participantes, jogadores e equipes.
 - Inscrições.
@@ -43,6 +47,23 @@ Criar uma plataforma completa para torneios, com foco em:
 - Painel do organizador.
 - Página pública do torneio.
 - Visual moderno, responsivo e acessível.
+
+## Autenticação, permissões e segurança
+
+- O sistema deve usar autenticação com email e senha.
+- A solução recomendada para autenticação, banco PostgreSQL, Row Level Security e controle de acesso é Supabase.
+- Não armazenar senha manualmente em tabela própria; senhas devem ser gerenciadas pelo Supabase Auth.
+- Não colocar chaves privadas, service role keys ou segredos no front-end.
+- Usar apenas variáveis públicas apropriadas no cliente, como URL pública e chave anon, quando Supabase for implementado.
+- Toda tabela importante deve ter Row Level Security habilitado.
+- Permissões devem ser validadas no banco por policies, funções SQL ou RPCs protegidas, não apenas por condicionais na interface.
+- Existem dois tipos principais de usuário:
+  - `admin`: administrador global do site.
+  - `user`: usuário comum autenticado.
+- Admins podem alterar configurações globais, alterar torneios em andamento ou encerrados, aprovar/rejeitar pedidos, editar resultados, resolver disputas, visualizar dados administrativos e bloquear/desbloquear ações quando necessário.
+- Usuários comuns podem criar conta, fazer login, editar o próprio perfil, escolher avatar pré-definido via `avatar_key`, informar RA, visualizar torneios públicos, inscrever-se em torneios e pedir permissão para criar torneios.
+- Usuários comuns não podem alterar dados de outros usuários, configurações globais ou torneios sem autorização.
+- Permissão para criar/gerenciar torneios deve ser tratada como autorização explícita, aprovada por admin e registrada em banco/auditoria.
 
 ## Referências obrigatórias
 
