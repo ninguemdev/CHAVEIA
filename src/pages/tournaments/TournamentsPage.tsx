@@ -195,6 +195,11 @@ export function TournamentsPage() {
                     <a className="button button-ghost" href={`#/torneios/${tournament.id}/participantes`}>
                       Participantes
                     </a>
+                    {tournament.registration_type === 'team' && (
+                      <a className="button button-ghost" href={`#/torneios/${tournament.id}/equipes`}>
+                        Equipes
+                      </a>
+                    )}
                     {canManage && (
                       <a className="button button-ghost" href={`#/torneios/${tournament.id}/editar`}>
                         Editar

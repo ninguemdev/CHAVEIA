@@ -106,9 +106,16 @@
 - **Critérios de aceite:** admin gerencia qualquer torneio; organizador gerencia apenas torneios próprios enquanto tiver permissão ativa; usuário revogado perde acesso.
 - **Riscos:** decisões de inscrição ainda não geram tabela dedicada de auditoria, apenas campos de decisão no registro.
 
-### Fase futura — Equipes completas
+### Fase 3.3 — Equipes completas
 
-- **Objetivo:** transformar inscrições por equipe em equipes com membros, capitão e substitutos.
-- **Tarefas:** criar `teams` e `team_members`; validar tamanho mínimo/máximo; permitir convite/aceite; integrar check-in por capitão.
-- **Critérios de aceite:** equipe completa vira participante confirmado; membros não podem estar duplicados no mesmo torneio.
-- **Riscos:** exigir confirmação de todos os membros pode impactar UX e prazo de inscrição.
+- **Objetivo:** transformar inscrições por equipe em equipes reais com membros e capitão.
+- **Tarefas:** criar `teams` e `team_members`; validar tamanho mínimo/máximo; permitir criação de equipe; adicionar/remover membros existentes por email/RA; enviar equipe para inscrição.
+- **Critérios de aceite:** equipe completa gera inscrição `pending`; membros não podem estar duplicados no mesmo torneio; RLS bloqueia edição de equipe alheia.
+- **Riscos:** convite com aceite, substitutos e transferência de capitania ficam para versões futuras para não atrasar o MVP.
+
+### Fase futura — Convites e substitutos
+
+- **Objetivo:** ampliar colaboração em equipes.
+- **Tarefas:** convite por email, aceite do membro, transferência de capitania, substitutos e histórico detalhado de escalação.
+- **Critérios de aceite:** nenhum usuário entra em equipe sem consentimento quando o fluxo de convite for ativado.
+- **Riscos:** aumenta complexidade de notificações, prazos e auditoria.

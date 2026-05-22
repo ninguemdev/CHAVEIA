@@ -54,6 +54,7 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
   const activeRegistration = findActiveRegistration(registrations, user?.id)
   const canRegister =
     tournament?.status === 'registrations_open' &&
+    tournament.registration_type === 'individual' &&
     Boolean(user) &&
     !activeRegistration &&
     activeRegistrations.length < (tournament?.max_participants ?? 0)
@@ -248,6 +249,11 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
               <a className="button button-secondary" href={`#/torneios/${tournament.id}/participantes`}>
                 Ver participantes
               </a>
+              {tournament.registration_type === 'team' && (
+                <a className="button button-secondary" href={`#/torneios/${tournament.id}/equipes`}>
+                  Ver equipes
+                </a>
+              )}
               {canManage && (
                 <a className="button button-ghost" href={`#/torneios/${tournament.id}/editar`}>
                   Editar torneio
@@ -323,7 +329,15 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
               </form>
             ) : (
               <div className="registration-state">
-                {!user ? (
+                {tournament.registration_type === 'team' && user ? (
+                  <>
+                    <strong>Inscrição por equipe</strong>
+                    <p>Crie ou gerencie sua equipe antes de enviar a inscrição do torneio.</p>
+                    <a className="button button-primary" href={`#/torneios/${tournament.id}/equipes`}>
+                      Abrir equipes
+                    </a>
+                  </>
+                ) : !user ? (
                   <>
                     <strong>Login necessário</strong>
                     <p>Entre com sua conta para solicitar inscrição neste torneio.</p>

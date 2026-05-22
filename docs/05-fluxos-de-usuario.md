@@ -207,3 +207,53 @@
 - **Passos:** acessar painel administrativo; abrir torneio; alterar configuração, resultado, inscrição ou bloqueio; informar justificativa; confirmar.
 - **Erros possíveis:** ausência de justificativa; impacto em partidas dependentes; falha de policy; tentativa de alteração sem auditoria.
 - **Estado final:** alteração aplicada, auditoria criada e dados derivados marcados para recálculo quando necessário.
+
+## Atualização: fluxos de equipes reais
+
+### Capitão cria equipe
+
+- **Ator:** usuário autenticado.
+- **Pré-condições:** torneio público por equipe, com status `registrations_open`; usuário ainda não é capitão de equipe ativa no torneio.
+- **Passos:** abrir página de equipes; informar nome; enviar; sistema cria `teams` em `draft` e adiciona o criador como membro `captain`.
+- **Erros possíveis:** torneio individual; inscrições fechadas; nome inválido; nome duplicado; usuário já possui equipe ativa.
+- **Estado final:** equipe em rascunho, visível para capitão, organizador e admin.
+
+### Capitão adiciona membro
+
+- **Ator:** capitão da equipe.
+- **Pré-condições:** equipe em torneio com inscrições abertas; membro existe em `profiles`.
+- **Passos:** informar email ou RA exato; sistema localiza profile; adicionar como membro `active`.
+- **Erros possíveis:** usuário não encontrado; usuário já está em equipe ativa do torneio; equipe atingiu `team_max_size`; ator não é capitão/gestor.
+- **Estado final:** membro ativo aparece na lista da equipe.
+
+### Capitão envia equipe para inscrição
+
+- **Ator:** capitão da equipe.
+- **Pré-condições:** equipe em `draft`; torneio por equipe aberto; equipe atinge `team_min_size` quando exigido.
+- **Passos:** revisar membros; acionar envio; RPC cria inscrição `pending` com `team_id`; equipe muda para `pending`.
+- **Erros possíveis:** equipe incompleta; inscrição duplicada ativa; prazo encerrado; torneio fechado.
+- **Estado final:** inscrição pendente aparece no painel de participantes e a equipe aguarda decisão.
+
+### Capitão exclui equipe em rascunho
+
+- **Ator:** capitão da equipe, admin ou organizador autorizado.
+- **Pré-condições:** equipe existente em `draft`; ator pode gerenciar a equipe.
+- **Passos:** abrir detalhes; confirmar exclusão; sistema executa `delete` em `teams`.
+- **Erros possíveis:** equipe já enviada/confirmada; ator sem permissão; policy RLS negando exclusão.
+- **Estado final:** equipe e vínculos de membros são removidos fisicamente por cascade.
+
+### Gestor decide inscrição de equipe
+
+- **Ator:** admin global ou organizador autorizado do torneio.
+- **Pré-condições:** inscrição por equipe em `pending`.
+- **Passos:** abrir participantes; revisar equipe e membros; confirmar, rejeitar ou cancelar com observação.
+- **Erros possíveis:** ator sem permissão; status inválido; torneio bloqueado.
+- **Estado final:** inscrição muda para `confirmed`, `rejected` ou `cancelled`; equipe sincroniza status correspondente.
+
+### Membro consulta equipe
+
+- **Ator:** membro ativo.
+- **Pré-condições:** usuário pertence à equipe.
+- **Passos:** abrir detalhes da equipe; visualizar membros, capitão e status.
+- **Erros possíveis:** usuário removido; equipe não encontrada; RLS nega leitura.
+- **Estado final:** membro visualiza a equipe, mas não consegue editar se não for capitão/gestor.

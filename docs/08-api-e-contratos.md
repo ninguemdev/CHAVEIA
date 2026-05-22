@@ -258,3 +258,61 @@ Quando Supabase for implementado:
 - **Validações:** torneio publicado.
 - **Erros possíveis:** `not_found`, `draft_not_public`.
 - **Permissões:** público pode ler apenas participantes confirmados/check-in; pendentes ficam protegidos.
+
+## Atualização: contratos de equipes
+
+### Criar equipe
+
+- **Entrada:** `tournament_id`, `name`, `captain_id`, `created_by`.
+- **Saída:** equipe `draft` e membro capitão criado automaticamente.
+- **Validações:** usuário autenticado; torneio por equipe; status `registrations_open`; nome válido; sem equipe ativa duplicada para o capitão.
+- **Erros possíveis:** `not_authenticated`, `not_team_tournament`, `registration_closed`, `duplicate_team`, `duplicate_name`, `rls_denied`.
+- **Permissões:** usuário cria apenas equipe própria; admin/organizador também podem gerir depois.
+
+### Buscar usuário para membro
+
+- **Entrada:** `identifier` com email ou RA exato.
+- **Saída:** profile mínimo `{ id, display_name, email, ra, avatar_key }`.
+- **Validações:** sessão autenticada; busca exata.
+- **Erros possíveis:** `not_found`, `not_authenticated`.
+- **Permissões:** RPC evita listagem ampla de usuários e deve ser usada apenas no fluxo de equipe.
+
+### Adicionar membro
+
+- **Entrada:** `team_id`, `user_id`.
+- **Saída:** membro ativo.
+- **Validações:** equipe existe; ator pode gerenciar; torneio aberto; limite máximo não excedido; usuário não está em outra equipe ativa do torneio.
+- **Erros possíveis:** `not_manager`, `capacity_reached`, `duplicate_member`, `user_already_in_tournament_team`.
+- **Permissões:** capitão, admin ou organizador autorizado.
+
+### Remover membro
+
+- **Entrada:** `team_member_id`.
+- **Saída:** membro com `status = removed`, `removed_by` e `removed_at`.
+- **Validações:** ator pode gerenciar; membro não é capitão; equipe ainda permite alteração.
+- **Erros possíveis:** `not_manager`, `cannot_remove_captain`, `invalid_status`.
+- **Permissões:** capitão, admin ou organizador autorizado.
+
+### Excluir equipe em rascunho
+
+- **Entrada:** `team_id`.
+- **Saída:** sem payload; equipe é removida.
+- **Validações:** equipe existe; status `draft`; ator pode gerenciar.
+- **Erros possíveis:** `not_manager`, `team_not_found`, `not_draft`, `rls_denied`.
+- **Permissões:** policy `teams_delete_draft_manager_or_captain` permite exclusão física apenas de equipe em rascunho por capitão, admin ou organizador.
+
+### Enviar equipe para inscrição
+
+- **Entrada:** `team_id`.
+- **Saída:** `registration_id`.
+- **Validações:** equipe em torneio por equipe; inscrições abertas; equipe completa quando exigido; capitão sem inscrição ativa duplicada.
+- **Erros possíveis:** `team_incomplete`, `duplicate_registration`, `registration_closed`, `not_manager`.
+- **Permissões:** capitão, admin ou organizador autorizado via RPC `submit_team_registration`.
+
+### Listar membros da equipe
+
+- **Entrada:** `team_id`.
+- **Saída:** membros ativos com dados mínimos de perfil.
+- **Validações:** equipe pública confirmada, usuário membro ou gestor.
+- **Erros possíveis:** `not_found`, `permission_denied`.
+- **Permissões:** público vê equipes confirmadas; membros, capitão, organizador e admin veem equipe própria/gerenciada.

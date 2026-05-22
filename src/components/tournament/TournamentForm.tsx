@@ -52,6 +52,9 @@ export function TournamentForm({
     ) as RegistrationType
     const teamMinSize = Number(formData.get('team_min_size') ?? 1)
     const teamMaxSize = Number(formData.get('team_max_size') ?? 1)
+    const allowFreeAgents = formData.get('allow_free_agents') === 'on'
+    const requireFullTeamBeforeRegistration =
+      formData.get('require_full_team_before_registration') === 'on'
 
     if (name.length < 4) {
       setLocalError('Informe um nome com pelo menos 4 caracteres.')
@@ -87,6 +90,13 @@ export function TournamentForm({
       registration_type: registrationType,
       team_min_size: registrationType === 'individual' ? 1 : teamMinSize,
       team_max_size: registrationType === 'individual' ? 1 : teamMaxSize,
+      allow_free_agents: registrationType === 'team' ? allowFreeAgents : false,
+      require_full_team_before_registration:
+        registrationType === 'team' ? requireFullTeamBeforeRegistration : true,
+      team_registration_deadline:
+        registrationType === 'team'
+          ? readNullableText(formData.get('team_registration_deadline'))
+          : null,
       campus: readNullableText(formData.get('campus')),
       description: readNullableText(formData.get('description')),
       starts_at: readNullableText(formData.get('starts_at')),
@@ -217,6 +227,38 @@ export function TournamentForm({
             />
           </label>
         </div>
+
+        <div className="form-grid">
+          <label className="field checkbox-field" htmlFor="tournament-allow-free-agents">
+            <input
+              id="tournament-allow-free-agents"
+              name="allow_free_agents"
+              type="checkbox"
+              defaultChecked={initialTournament?.allow_free_agents ?? false}
+            />
+            <span>Permitir lista futura de agentes livres</span>
+          </label>
+
+          <label className="field checkbox-field" htmlFor="tournament-require-full-team">
+            <input
+              id="tournament-require-full-team"
+              name="require_full_team_before_registration"
+              type="checkbox"
+              defaultChecked={initialTournament?.require_full_team_before_registration ?? true}
+            />
+            <span>Exigir equipe mínima antes de enviar inscrição</span>
+          </label>
+        </div>
+
+        <label className="field" htmlFor="tournament-team-registration-deadline">
+          <span>Prazo para equipes</span>
+          <input
+            id="tournament-team-registration-deadline"
+            name="team_registration_deadline"
+            type="datetime-local"
+            defaultValue={initialTournament?.team_registration_deadline?.slice(0, 16) ?? ''}
+          />
+        </label>
       </section>
 
       <section className="form-section" aria-labelledby="tournament-rules-data">

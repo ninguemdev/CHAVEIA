@@ -76,6 +76,57 @@ begin
 end
 $$;
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    where typname = 'team_status'
+      and typnamespace = 'public'::regnamespace
+  ) then
+    create type public.team_status as enum (
+      'draft',
+      'pending',
+      'confirmed',
+      'cancelled',
+      'rejected'
+    );
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    where typname = 'team_member_role'
+      and typnamespace = 'public'::regnamespace
+  ) then
+    create type public.team_member_role as enum (
+      'captain',
+      'member'
+    );
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    where typname = 'team_member_status'
+      and typnamespace = 'public'::regnamespace
+  ) then
+    create type public.team_member_status as enum (
+      'active',
+      'removed'
+    );
+  end if;
+end
+$$;
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
@@ -858,6 +909,9 @@ create table if not exists public.tournaments (
   registration_type public.registration_type not null default 'individual',
   team_min_size integer not null default 1,
   team_max_size integer not null default 1,
+  allow_free_agents boolean not null default false,
+  require_full_team_before_registration boolean not null default true,
+  team_registration_deadline timestamptz,
   starts_at date,
   ends_at date,
   created_by uuid not null references public.profiles(id) on delete restrict,
@@ -894,12 +948,27 @@ alter table public.tournaments
 alter table public.tournaments
   add column if not exists team_max_size integer not null default 1;
 
+alter table public.tournaments
+  add column if not exists allow_free_agents boolean not null default false;
+
+alter table public.tournaments
+  add column if not exists require_full_team_before_registration boolean not null default true;
+
+alter table public.tournaments
+  add column if not exists team_registration_deadline timestamptz;
+
 comment on column public.tournaments.registration_type is
   'Tipo de inscrição do torneio: individual no MVP ou team para preparação do módulo de equipes.';
 comment on column public.tournaments.team_min_size is
   'Tamanho mínimo de equipe para torneios por equipe. Em torneios individuais permanece 1.';
 comment on column public.tournaments.team_max_size is
   'Tamanho máximo de equipe para torneios por equipe. Em torneios individuais permanece 1.';
+comment on column public.tournaments.allow_free_agents is
+  'Permite jogadores sem equipe entrarem em lista futura de agentes livres. Não implementado no MVP.';
+comment on column public.tournaments.require_full_team_before_registration is
+  'Quando true, equipe precisa atingir team_min_size antes de enviar inscrição.';
+comment on column public.tournaments.team_registration_deadline is
+  'Prazo opcional para criação/ajuste de equipes, além do status do torneio.';
 
 do $$
 begin
@@ -922,6 +991,7 @@ create table if not exists public.tournament_registrations (
   id uuid primary key default extensions.gen_random_uuid(),
   tournament_id uuid not null references public.tournaments(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
+  team_id uuid,
   display_name text not null,
   status public.tournament_registration_status not null default 'pending',
   registration_type public.registration_type not null default 'individual',
@@ -959,6 +1029,9 @@ comment on column public.tournament_registrations.status is
 
 alter table public.tournament_registrations
   add column if not exists registration_type public.registration_type not null default 'individual';
+
+alter table public.tournament_registrations
+  add column if not exists team_id uuid;
 
 alter table public.tournament_registrations
   add column if not exists captain_user_id uuid references public.profiles(id) on delete set null;
@@ -1067,6 +1140,122 @@ create index if not exists tournaments_created_by_idx
 create index if not exists tournament_registrations_tournament_idx
   on public.tournament_registrations (tournament_id, status);
 
+create table if not exists public.teams (
+  id uuid primary key default extensions.gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  name text not null,
+  status public.team_status not null default 'draft',
+  captain_id uuid not null references public.profiles(id) on delete restrict,
+  created_by uuid not null references public.profiles(id) on delete restrict,
+  registration_id uuid references public.tournament_registrations(id) on delete set null,
+  admin_notes text,
+  decided_by uuid references public.profiles(id) on delete set null,
+  decided_at timestamptz,
+  cancelled_by uuid references public.profiles(id) on delete set null,
+  cancelled_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint teams_name_not_blank check (length(btrim(name)) >= 2),
+  constraint teams_decision_consistency check (
+    (
+      status in ('confirmed', 'rejected')
+      and decided_by is not null
+      and decided_at is not null
+    )
+    or status in ('draft', 'pending', 'cancelled')
+  ),
+  constraint teams_cancel_consistency check (
+    (
+      status = 'cancelled'
+      and cancelled_by is not null
+      and cancelled_at is not null
+    )
+    or status <> 'cancelled'
+  )
+);
+
+comment on table public.teams is
+  'Equipes de torneios por equipe. A inscrição pública/administrativa aponta para a equipe por tournament_registrations.team_id.';
+comment on column public.teams.captain_id is
+  'Capitão atual da equipe. Transferência de capitania fica para etapa futura.';
+comment on column public.teams.registration_id is
+  'Inscrição criada quando a equipe é enviada para avaliação.';
+
+create table if not exists public.team_members (
+  id uuid primary key default extensions.gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  team_id uuid not null references public.teams(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  role public.team_member_role not null default 'member',
+  status public.team_member_status not null default 'active',
+  added_by uuid references public.profiles(id) on delete set null,
+  removed_by uuid references public.profiles(id) on delete set null,
+  removed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint team_members_removed_consistency check (
+    (
+      status = 'removed'
+      and removed_by is not null
+      and removed_at is not null
+    )
+    or status = 'active'
+  )
+);
+
+comment on table public.team_members is
+  'Membros de equipes. No MVP, membros são adicionados por usuário existente localizado por email ou RA.';
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'tournament_registrations_team_id_fkey'
+      and conrelid = 'public.tournament_registrations'::regclass
+  ) then
+    alter table public.tournament_registrations
+      add constraint tournament_registrations_team_id_fkey
+      foreign key (team_id) references public.teams(id) on delete set null;
+  end if;
+end
+$$;
+
+create unique index if not exists teams_one_active_captain_per_tournament
+  on public.teams (tournament_id, captain_id)
+  where status in (
+    'draft'::public.team_status,
+    'pending'::public.team_status,
+    'confirmed'::public.team_status
+  );
+
+create unique index if not exists teams_unique_active_name_per_tournament
+  on public.teams (tournament_id, lower(name))
+  where status in (
+    'draft'::public.team_status,
+    'pending'::public.team_status,
+    'confirmed'::public.team_status
+  );
+
+create unique index if not exists team_members_one_active_per_team
+  on public.team_members (team_id, user_id)
+  where status = 'active'::public.team_member_status;
+
+create unique index if not exists team_members_one_active_team_per_tournament
+  on public.team_members (tournament_id, user_id)
+  where status = 'active'::public.team_member_status;
+
+create unique index if not exists team_members_one_active_captain_per_team
+  on public.team_members (team_id)
+  where status = 'active'::public.team_member_status
+    and role = 'captain'::public.team_member_role;
+
+create index if not exists teams_tournament_status_idx
+  on public.teams (tournament_id, status);
+
+create index if not exists team_members_team_status_idx
+  on public.team_members (team_id, status);
+
 -- Verifica se o usuário autenticado pode administrar inscrições de um torneio.
 -- Admin global pode gerenciar qualquer torneio. Organizador aprovado só pode
 -- gerenciar torneios criados por ele e enquanto mantiver permissão ativa.
@@ -1093,6 +1282,541 @@ comment on function public.can_manage_tournament(uuid) is
 
 revoke all on function public.can_manage_tournament(uuid) from public;
 grant execute on function public.can_manage_tournament(uuid) to authenticated;
+
+create or replace function public.can_manage_team(target_team_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.is_admin()
+    or exists (
+      select 1
+      from public.teams team
+      where team.id = target_team_id
+        and (
+          public.can_manage_tournament(team.tournament_id)
+          or team.captain_id = auth.uid()
+        )
+    );
+$$;
+
+comment on function public.can_manage_team(uuid) is
+  'Retorna true para admin, organizador do torneio ou capitão da equipe.';
+
+revoke all on function public.can_manage_team(uuid) from public;
+grant execute on function public.can_manage_team(uuid) to authenticated;
+
+create or replace function public.is_team_member(target_team_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.team_members member
+    where member.team_id = target_team_id
+      and member.user_id = auth.uid()
+      and member.status = 'active'::public.team_member_status
+  );
+$$;
+
+comment on function public.is_team_member(uuid) is
+  'Retorna true quando auth.uid() é membro ativo da equipe. SECURITY DEFINER evita recursão de RLS.';
+
+revoke all on function public.is_team_member(uuid) from public;
+grant execute on function public.is_team_member(uuid) to authenticated;
+
+create or replace function public.find_profile_for_team_member(identifier text)
+returns table (
+  id uuid,
+  display_name text,
+  email text,
+  ra text,
+  avatar_key text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select profile.id,
+         profile.display_name,
+         profile.email,
+         profile.ra,
+         profile.avatar_key
+  from public.profiles profile
+  where auth.uid() is not null
+    and (
+      lower(profile.email) = lower(btrim(identifier))
+      or lower(coalesce(profile.ra, '')) = lower(btrim(identifier))
+    )
+  limit 1;
+$$;
+
+comment on function public.find_profile_for_team_member(text) is
+  'Busca exata por email ou RA para adicionar usuário existente a uma equipe. Não lista usuários.';
+
+revoke all on function public.find_profile_for_team_member(text) from public;
+grant execute on function public.find_profile_for_team_member(text) to authenticated;
+
+create or replace function public.get_team_members_with_profiles(target_team_id uuid)
+returns table (
+  id uuid,
+  tournament_id uuid,
+  team_id uuid,
+  user_id uuid,
+  display_name text,
+  avatar_key text,
+  role public.team_member_role,
+  status public.team_member_status,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  is_public_team boolean;
+begin
+  select exists (
+    select 1
+    from public.teams team
+    join public.tournaments tournament on tournament.id = team.tournament_id
+    where team.id = target_team_id
+      and team.status = 'confirmed'::public.team_status
+      and tournament.status <> 'draft'::public.tournament_status
+  )
+  into is_public_team;
+
+  if not is_public_team
+    and not public.can_manage_team(target_team_id)
+    and not public.is_team_member(target_team_id)
+  then
+    raise exception 'Usuário não pode ver membros desta equipe.';
+  end if;
+
+  return query
+    select member.id,
+           member.tournament_id,
+           member.team_id,
+           member.user_id,
+           profile.display_name,
+           profile.avatar_key,
+           member.role,
+           member.status,
+           member.created_at,
+           member.updated_at
+    from public.team_members member
+    join public.profiles profile on profile.id = member.user_id
+    where member.team_id = target_team_id
+      and member.status = 'active'::public.team_member_status
+    order by
+      case when member.role = 'captain'::public.team_member_role then 0 else 1 end,
+      profile.display_name;
+end;
+$$;
+
+comment on function public.get_team_members_with_profiles(uuid) is
+  'Lista membros ativos com dados públicos mínimos de perfil, respeitando equipe pública, membro, capitão ou gestor.';
+
+revoke all on function public.get_team_members_with_profiles(uuid) from public;
+grant execute on function public.get_team_members_with_profiles(uuid) to anon, authenticated;
+
+create or replace function public.validate_team_write()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_tournament public.tournaments%rowtype;
+  member_count integer;
+begin
+  select *
+  into target_tournament
+  from public.tournaments
+  where id = new.tournament_id;
+
+  if target_tournament.id is null then
+    raise exception 'Torneio da equipe não encontrado.';
+  end if;
+
+  if target_tournament.registration_type <> 'team'::public.registration_type then
+    raise exception 'Equipes só podem ser criadas em torneios por equipe.';
+  end if;
+
+  if target_tournament.status <> 'registrations_open'::public.tournament_status
+    and not public.can_manage_tournament(new.tournament_id)
+  then
+    raise exception 'Equipes só podem ser alteradas enquanto inscrições estão abertas.';
+  end if;
+
+  if target_tournament.team_registration_deadline is not null
+    and now() > target_tournament.team_registration_deadline
+    and not public.can_manage_tournament(new.tournament_id)
+  then
+    raise exception 'O prazo para alterar equipes foi encerrado.';
+  end if;
+
+  if TG_OP = 'INSERT' then
+    if new.created_by <> auth.uid() or new.captain_id <> auth.uid() then
+      raise exception 'O criador da equipe deve ser o capitão inicial.';
+    end if;
+
+    if new.status <> 'draft'::public.team_status then
+      raise exception 'Novas equipes devem iniciar como rascunho.';
+    end if;
+  end if;
+
+  if TG_OP = 'UPDATE' then
+    if new.id is distinct from old.id
+      or new.tournament_id is distinct from old.tournament_id
+      or new.created_by is distinct from old.created_by
+      or new.captain_id is distinct from old.captain_id
+      or new.created_at is distinct from old.created_at
+    then
+      raise exception 'Campos estruturais da equipe não podem ser alterados.';
+    end if;
+
+    if not public.can_manage_team(new.id) then
+      raise exception 'Usuário não pode alterar esta equipe.';
+    end if;
+
+    if old.status in ('cancelled', 'rejected') and new.status is distinct from old.status then
+      raise exception 'Equipe cancelada ou rejeitada não deve ser reativada.';
+    end if;
+  end if;
+
+  if new.status in ('pending', 'confirmed') then
+    select count(*)
+    into member_count
+    from public.team_members
+    where team_id = new.id
+      and status = 'active'::public.team_member_status;
+
+    if member_count < target_tournament.team_min_size then
+      raise exception 'Equipe precisa atingir o tamanho mínimo antes de ser enviada ou confirmada.';
+    end if;
+  end if;
+
+  if new.status in ('confirmed', 'rejected') then
+    new.decided_by := coalesce(new.decided_by, auth.uid());
+    new.decided_at := coalesce(new.decided_at, now());
+  end if;
+
+  if new.status = 'cancelled'::public.team_status then
+    new.cancelled_by := coalesce(new.cancelled_by, auth.uid(), new.captain_id);
+    new.cancelled_at := coalesce(new.cancelled_at, now());
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.handle_new_team()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.team_members (
+    tournament_id,
+    team_id,
+    user_id,
+    role,
+    status,
+    added_by
+  )
+  values (
+    new.tournament_id,
+    new.id,
+    new.captain_id,
+    'captain'::public.team_member_role,
+    'active'::public.team_member_status,
+    new.created_by
+  )
+  on conflict do nothing;
+
+  return new;
+end;
+$$;
+
+create or replace function public.validate_team_member_write()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_team public.teams%rowtype;
+  target_tournament public.tournaments%rowtype;
+  active_count integer;
+begin
+  select *
+  into target_team
+  from public.teams
+  where id = new.team_id;
+
+  if target_team.id is null then
+    raise exception 'Equipe não encontrada.';
+  end if;
+
+  select *
+  into target_tournament
+  from public.tournaments
+  where id = target_team.tournament_id;
+
+  new.tournament_id := target_team.tournament_id;
+
+  if current_setting('app.team_cancellation', true) = 'on' then
+    if TG_OP = 'UPDATE' and new.status = 'removed'::public.team_member_status then
+      new.removed_by := coalesce(new.removed_by, auth.uid());
+      new.removed_at := coalesce(new.removed_at, now());
+    end if;
+
+    return new;
+  end if;
+
+  if target_tournament.status <> 'registrations_open'::public.tournament_status
+    and not public.can_manage_tournament(target_team.tournament_id)
+  then
+    raise exception 'Membros só podem ser alterados enquanto inscrições estão abertas.';
+  end if;
+
+  if target_tournament.team_registration_deadline is not null
+    and now() > target_tournament.team_registration_deadline
+    and not public.can_manage_tournament(target_team.tournament_id)
+  then
+    raise exception 'O prazo para alterar membros foi encerrado.';
+  end if;
+
+  if not public.can_manage_team(new.team_id) then
+    raise exception 'Usuário não pode alterar membros desta equipe.';
+  end if;
+
+  if TG_OP = 'INSERT' then
+    new.added_by := coalesce(new.added_by, auth.uid());
+    new.status := coalesce(new.status, 'active'::public.team_member_status);
+  end if;
+
+  if TG_OP = 'UPDATE' then
+    if new.id is distinct from old.id
+      or new.tournament_id is distinct from old.tournament_id
+      or new.team_id is distinct from old.team_id
+      or new.user_id is distinct from old.user_id
+      or new.created_at is distinct from old.created_at
+    then
+      raise exception 'Campos estruturais do membro não podem ser alterados.';
+    end if;
+
+    if old.role = 'captain'::public.team_member_role
+      and new.status = 'removed'::public.team_member_status
+    then
+      raise exception 'Capitão não pode ser removido no MVP. Transfira capitania em etapa futura.';
+    end if;
+  end if;
+
+  if new.role = 'captain'::public.team_member_role
+    and new.user_id <> target_team.captain_id
+  then
+    raise exception 'Somente o captain_id da equipe pode ter papel de capitão.';
+  end if;
+
+  if new.user_id = target_team.captain_id then
+    new.role := 'captain'::public.team_member_role;
+  end if;
+
+  if new.status = 'removed'::public.team_member_status then
+    new.removed_by := coalesce(new.removed_by, auth.uid());
+    new.removed_at := coalesce(new.removed_at, now());
+  end if;
+
+  if new.status = 'active'::public.team_member_status then
+    select count(*)
+    into active_count
+    from public.team_members
+    where team_id = new.team_id
+      and status = 'active'::public.team_member_status
+      and (
+        TG_OP = 'INSERT'
+        or id <> new.id
+      );
+
+    if active_count >= target_tournament.team_max_size then
+      raise exception 'A equipe atingiu o tamanho máximo.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.submit_team_registration(target_team_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_team public.teams%rowtype;
+  target_tournament public.tournaments%rowtype;
+  active_count integer;
+  created_registration_id uuid;
+begin
+  select *
+  into target_team
+  from public.teams
+  where id = target_team_id;
+
+  if target_team.id is null then
+    raise exception 'Equipe não encontrada.';
+  end if;
+
+  if not public.can_manage_team(target_team.id) then
+    raise exception 'Usuário não pode enviar esta equipe para inscrição.';
+  end if;
+
+  select *
+  into target_tournament
+  from public.tournaments
+  where id = target_team.tournament_id;
+
+  if target_tournament.status <> 'registrations_open'::public.tournament_status then
+    raise exception 'Inscrições de equipe só são permitidas com inscrições abertas.';
+  end if;
+
+  if target_tournament.registration_type <> 'team'::public.registration_type then
+    raise exception 'Este torneio não é por equipe.';
+  end if;
+
+  select count(*)
+  into active_count
+  from public.team_members
+  where team_id = target_team.id
+    and status = 'active'::public.team_member_status;
+
+  if target_tournament.require_full_team_before_registration
+    and active_count < target_tournament.team_min_size
+  then
+    raise exception 'Equipe incompleta. Adicione membros até atingir o mínimo.';
+  end if;
+
+  select id
+  into created_registration_id
+  from public.tournament_registrations
+  where tournament_id = target_team.tournament_id
+    and user_id = target_team.captain_id
+    and status in (
+      'pending'::public.tournament_registration_status,
+      'confirmed'::public.tournament_registration_status,
+      'checked_in'::public.tournament_registration_status
+    )
+  limit 1;
+
+  if created_registration_id is not null then
+    raise exception 'Este capitão já possui inscrição ativa neste torneio.';
+  end if;
+
+  insert into public.tournament_registrations (
+    tournament_id,
+    user_id,
+    team_id,
+    display_name,
+    status,
+    registration_type,
+    captain_user_id
+  )
+  values (
+    target_team.tournament_id,
+    target_team.captain_id,
+    target_team.id,
+    target_team.name,
+    'pending'::public.tournament_registration_status,
+    'team'::public.registration_type,
+    target_team.captain_id
+  )
+  returning id into created_registration_id;
+
+  update public.teams
+  set status = 'pending'::public.team_status,
+      registration_id = created_registration_id,
+      updated_at = now()
+  where id = target_team.id;
+
+  return created_registration_id;
+end;
+$$;
+
+revoke all on function public.submit_team_registration(uuid) from public;
+grant execute on function public.submit_team_registration(uuid) to authenticated;
+
+create or replace function public.cancel_team(target_team_id uuid, reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_team public.teams%rowtype;
+begin
+  select *
+  into target_team
+  from public.teams
+  where id = target_team_id;
+
+  if target_team.id is null then
+    raise exception 'Equipe não encontrada.';
+  end if;
+
+  if not public.can_manage_team(target_team.id) then
+    raise exception 'Usuário não pode cancelar esta equipe.';
+  end if;
+
+  if target_team.status = 'cancelled'::public.team_status then
+    return;
+  end if;
+
+  if target_team.status = 'confirmed'::public.team_status
+    and not public.can_manage_tournament(target_team.tournament_id)
+  then
+    raise exception 'Equipe confirmada só pode ser cancelada por admin ou organizador.';
+  end if;
+
+  perform set_config('app.team_cancellation', 'on', true);
+
+  update public.team_members
+  set status = 'removed'::public.team_member_status,
+      removed_by = coalesce(auth.uid(), target_team.captain_id),
+      removed_at = now(),
+      updated_at = now()
+  where team_id = target_team.id
+    and status = 'active'::public.team_member_status;
+
+  update public.teams
+  set status = 'cancelled'::public.team_status,
+      cancelled_by = coalesce(auth.uid(), target_team.captain_id),
+      cancelled_at = now(),
+      admin_notes = coalesce(nullif(reason, ''), admin_notes),
+      updated_at = now()
+  where id = target_team.id;
+
+  perform set_config('app.team_cancellation', 'off', true);
+end;
+$$;
+
+comment on function public.cancel_team(uuid, text) is
+  'Cancela equipe por exclusão lógica, remove vínculos ativos de membros e preserva histórico.';
+
+revoke all on function public.cancel_team(uuid, text) from public;
+grant execute on function public.cancel_team(uuid, text) to authenticated;
 
 -- Protege campos de autoria do torneio. Admins podem editar qualquer torneio,
 -- mas mesmo admins não devem trocar id/created_at em update comum.
@@ -1132,6 +1856,7 @@ declare
   current_max_participants integer;
   current_registration_type public.registration_type;
   current_registration_count integer;
+  target_team public.teams%rowtype;
 begin
   select status, max_participants, registration_type
   into current_tournament_status, current_max_participants, current_registration_type
@@ -1147,8 +1872,28 @@ begin
   end if;
 
   if new.registration_type = 'team'::public.registration_type then
+    if new.team_id is null then
+      raise exception 'Inscrição por equipe precisa apontar para uma equipe.';
+    end if;
+
+    select *
+    into target_team
+    from public.teams
+    where id = new.team_id;
+
+    if target_team.id is null
+      or target_team.tournament_id <> new.tournament_id
+      or target_team.captain_id <> new.user_id
+    then
+      raise exception 'Equipe inválida para esta inscrição.';
+    end if;
+
     new.captain_user_id := coalesce(new.captain_user_id, new.user_id);
   else
+    if new.team_id is not null then
+      raise exception 'Inscrição individual não pode apontar para equipe.';
+    end if;
+
     new.captain_user_id := null;
   end if;
 
@@ -1264,6 +2009,46 @@ begin
     new.cancelled_at := coalesce(new.cancelled_at, now());
   end if;
 
+  if new.team_id is not null and new.status in (
+    'confirmed'::public.tournament_registration_status,
+    'rejected'::public.tournament_registration_status,
+    'cancelled'::public.tournament_registration_status
+  ) then
+    update public.teams
+    set status = case new.status
+      when 'confirmed'::public.tournament_registration_status then 'confirmed'::public.team_status
+      when 'rejected'::public.tournament_registration_status then 'rejected'::public.team_status
+      else 'cancelled'::public.team_status
+    end,
+        decided_by = case
+          when new.status in (
+            'confirmed'::public.tournament_registration_status,
+            'rejected'::public.tournament_registration_status
+          )
+          then new.decided_by
+          else decided_by
+        end,
+        decided_at = case
+          when new.status in (
+            'confirmed'::public.tournament_registration_status,
+            'rejected'::public.tournament_registration_status
+          )
+          then new.decided_at
+          else decided_at
+        end,
+        cancelled_by = case
+          when new.status = 'cancelled'::public.tournament_registration_status then new.cancelled_by
+          else cancelled_by
+        end,
+        cancelled_at = case
+          when new.status = 'cancelled'::public.tournament_registration_status then new.cancelled_at
+          else cancelled_at
+        end,
+        admin_notes = coalesce(new.admin_notes, admin_notes),
+        updated_at = now()
+    where id = new.team_id;
+  end if;
+
   if new.status in (
     'pending'::public.tournament_registration_status,
     'confirmed'::public.tournament_registration_status,
@@ -1326,14 +2111,50 @@ create trigger tournament_registrations_validate_update
   for each row
   execute function public.validate_tournament_registration_write();
 
+drop trigger if exists teams_set_updated_at on public.teams;
+create trigger teams_set_updated_at
+  before update on public.teams
+  for each row
+  execute function public.set_updated_at();
+
+drop trigger if exists teams_validate_write on public.teams;
+create trigger teams_validate_write
+  before insert or update on public.teams
+  for each row
+  execute function public.validate_team_write();
+
+drop trigger if exists teams_handle_new_team on public.teams;
+create trigger teams_handle_new_team
+  after insert on public.teams
+  for each row
+  execute function public.handle_new_team();
+
+drop trigger if exists team_members_set_updated_at on public.team_members;
+create trigger team_members_set_updated_at
+  before update on public.team_members
+  for each row
+  execute function public.set_updated_at();
+
+drop trigger if exists team_members_validate_write on public.team_members;
+create trigger team_members_validate_write
+  before insert or update on public.team_members
+  for each row
+  execute function public.validate_team_member_write();
+
 alter table public.tournaments enable row level security;
 alter table public.tournament_registrations enable row level security;
+alter table public.teams enable row level security;
+alter table public.team_members enable row level security;
 
 grant usage on schema public to anon;
 grant select on public.tournaments to anon;
 grant select on public.tournament_registrations to anon;
+grant select on public.teams to anon;
+grant select on public.team_members to anon;
 grant select, insert, update, delete on public.tournaments to authenticated;
 grant select, insert, update on public.tournament_registrations to authenticated;
+grant select, insert, update, delete on public.teams to authenticated;
+grant select, insert, update on public.team_members to authenticated;
 revoke delete on public.tournament_registrations from authenticated;
 
 drop policy if exists "tournaments_select_public" on public.tournaments;
@@ -1499,6 +2320,16 @@ create policy "registrations_insert_open_tournament"
         and t.status = 'registrations_open'::public.tournament_status
         and t.registration_type = registration_type
     )
+    and (
+      (
+        registration_type = 'individual'::public.registration_type
+        and team_id is null
+      )
+      or (
+        registration_type = 'team'::public.registration_type
+        and team_id is not null
+      )
+    )
   );
 
 comment on policy "registrations_insert_open_tournament" on public.tournament_registrations is
@@ -1543,3 +2374,155 @@ create policy "registrations_manage_tournament"
 
 comment on policy "registrations_manage_tournament" on public.tournament_registrations is
   'Permite confirmar, rejeitar ou cancelar inscrições para admin global e organizador autorizado do torneio.';
+
+drop policy if exists "teams_select_public_confirmed" on public.teams;
+drop policy if exists "teams_select_own" on public.teams;
+drop policy if exists "teams_select_manager" on public.teams;
+drop policy if exists "teams_insert_captain" on public.teams;
+drop policy if exists "teams_update_manager_or_captain" on public.teams;
+drop policy if exists "teams_delete_draft_manager_or_captain" on public.teams;
+
+create policy "teams_select_public_confirmed"
+  on public.teams
+  for select
+  to anon, authenticated
+  using (
+    status = 'confirmed'::public.team_status
+    and exists (
+      select 1
+      from public.tournaments tournament
+      where tournament.id = tournament_id
+        and tournament.status <> 'draft'::public.tournament_status
+    )
+  );
+
+comment on policy "teams_select_public_confirmed" on public.teams is
+  'Permite leitura pública apenas de equipes confirmadas em torneios publicados.';
+
+create policy "teams_select_own"
+  on public.teams
+  for select
+  to authenticated
+  using (
+    captain_id = auth.uid()
+    or public.is_team_member(id)
+  );
+
+comment on policy "teams_select_own" on public.teams is
+  'Permite que capitão e membros vejam a própria equipe.';
+
+create policy "teams_select_manager"
+  on public.teams
+  for select
+  to authenticated
+  using (public.can_manage_tournament(tournament_id));
+
+comment on policy "teams_select_manager" on public.teams is
+  'Permite que admin e organizador autorizado vejam todas as equipes do torneio.';
+
+create policy "teams_insert_captain"
+  on public.teams
+  for insert
+  to authenticated
+  with check (
+    created_by = auth.uid()
+    and captain_id = auth.uid()
+    and status = 'draft'::public.team_status
+    and exists (
+      select 1
+      from public.tournaments tournament
+      where tournament.id = tournament_id
+        and tournament.registration_type = 'team'::public.registration_type
+        and tournament.status = 'registrations_open'::public.tournament_status
+    )
+  );
+
+comment on policy "teams_insert_captain" on public.teams is
+  'Usuário autenticado cria equipe própria em torneio por equipe com inscrições abertas.';
+
+create policy "teams_update_manager_or_captain"
+  on public.teams
+  for update
+  to authenticated
+  using (public.can_manage_team(id))
+  with check (public.can_manage_team(id));
+
+comment on policy "teams_update_manager_or_captain" on public.teams is
+  'Capitão edita a própria equipe; admin e organizador autorizado gerenciam equipes do torneio.';
+
+create policy "teams_delete_draft_manager_or_captain"
+  on public.teams
+  for delete
+  to authenticated
+  using (
+    status = 'draft'::public.team_status
+    and public.can_manage_team(id)
+  );
+
+comment on policy "teams_delete_draft_manager_or_captain" on public.teams is
+  'Permite excluir fisicamente apenas equipes em rascunho. Membros são removidos por cascade.';
+
+drop policy if exists "team_members_select_public_confirmed" on public.team_members;
+drop policy if exists "team_members_select_own_team" on public.team_members;
+drop policy if exists "team_members_select_manager" on public.team_members;
+drop policy if exists "team_members_insert_manager_or_captain" on public.team_members;
+drop policy if exists "team_members_update_manager_or_captain" on public.team_members;
+
+create policy "team_members_select_public_confirmed"
+  on public.team_members
+  for select
+  to anon, authenticated
+  using (
+    status = 'active'::public.team_member_status
+    and exists (
+      select 1
+      from public.teams team
+      join public.tournaments tournament on tournament.id = team.tournament_id
+      where team.id = team_id
+        and team.status = 'confirmed'::public.team_status
+        and tournament.status <> 'draft'::public.tournament_status
+    )
+  );
+
+comment on policy "team_members_select_public_confirmed" on public.team_members is
+  'Permite leitura pública dos membros ativos de equipes confirmadas.';
+
+create policy "team_members_select_own_team"
+  on public.team_members
+  for select
+  to authenticated
+  using (
+    user_id = auth.uid()
+    or public.can_manage_team(team_id)
+  );
+
+comment on policy "team_members_select_own_team" on public.team_members is
+  'Permite que membro veja seu vínculo e capitão veja a lista da própria equipe.';
+
+create policy "team_members_select_manager"
+  on public.team_members
+  for select
+  to authenticated
+  using (public.can_manage_tournament(tournament_id));
+
+comment on policy "team_members_select_manager" on public.team_members is
+  'Permite que admin e organizador autorizado vejam membros das equipes do torneio.';
+
+create policy "team_members_insert_manager_or_captain"
+  on public.team_members
+  for insert
+  to authenticated
+  with check (public.can_manage_team(team_id));
+
+comment on policy "team_members_insert_manager_or_captain" on public.team_members is
+  'Capitão, admin ou organizador autorizado adiciona membros respeitando triggers de tamanho e duplicidade.';
+
+create policy "team_members_update_manager_or_captain"
+  on public.team_members
+  for update
+  to authenticated
+  using (public.can_manage_team(team_id))
+  with check (public.can_manage_team(team_id));
+
+comment on policy "team_members_update_manager_or_captain" on public.team_members is
+  'Capitão, admin ou organizador autorizado remove membros por status removed, preservando histórico.';

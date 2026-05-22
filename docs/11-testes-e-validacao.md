@@ -235,3 +235,28 @@ Verificar:
 - Torneio por equipe registra `registration_type = team` e `captain_user_id`, sem exigir cadastro completo de membros nesta etapa.
 - Testar limite de capacidade com inscrições `pending`, `confirmed` e `checked_in`.
 - Testar migração de inscrições legadas `registered` para `confirmed`.
+
+## Atualização: testes de equipes
+
+- Torneio individual não exibe criação de equipe e mantém inscrição direta.
+- Torneio por equipe com `registrations_open` permite criar equipe.
+- Torneio por equipe fechado, cancelado, em andamento ou finalizado bloqueia criação de equipe no front-end e no banco.
+- Criador da equipe vira capitão automaticamente.
+- Usuário não consegue criar segunda equipe ativa no mesmo torneio.
+- Nome vazio ou com menos de dois caracteres é rejeitado.
+- Nome duplicado ativo no mesmo torneio é rejeitado.
+- Capitão adiciona membro existente por email exato.
+- Capitão adiciona membro existente por RA exato.
+- Usuário inexistente por email/RA retorna erro claro.
+- Mesmo usuário não pode ser membro ativo de duas equipes no mesmo torneio.
+- Equipe com menos que `team_min_size` não pode ser enviada quando `require_full_team_before_registration` estiver ativo.
+- Equipe acima de `team_max_size` é bloqueada por trigger.
+- Membro comum vê a equipe, mas não consegue editar nome, adicionar ou remover membros.
+- Capitão não consegue remover a si mesmo no MVP.
+- Capitão consegue excluir equipe em rascunho e os vínculos de membros são removidos por cascade.
+- Capitão não consegue excluir equipe já enviada, confirmada, rejeitada ou cancelada.
+- Admin gerencia qualquer equipe.
+- Organizador autorizado gerencia equipes apenas dos torneios que administra.
+- Organizador com permissão revogada não consegue criar novos torneios nem gerir equipes de torneios sem autorização.
+- Aprovar inscrição de equipe muda `tournament_registrations.status` para `confirmed` e `teams.status` para `confirmed`.
+- Rejeitar ou cancelar inscrição de equipe sincroniza `teams.status` para `rejected` ou `cancelled` sem apagar histórico.

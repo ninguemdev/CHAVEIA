@@ -22,6 +22,9 @@ export type TournamentFormValues = {
   registration_type: RegistrationType
   team_min_size: number
   team_max_size: number
+  allow_free_agents: boolean
+  require_full_team_before_registration: boolean
+  team_registration_deadline: string | null
   starts_at: string | null
   ends_at: string | null
 }
@@ -306,7 +309,8 @@ export async function registerForTournament(
       display_name: displayName,
       status: 'pending',
       registration_type: registrationType,
-      captain_user_id: registrationType === 'team' ? userId : null,
+      captain_user_id: null,
+      team_id: null,
     })
     .select('*')
     .single()

@@ -45,7 +45,9 @@ import { CreateTournamentPage as SupabaseCreateTournamentPage } from './pages/to
 import { EditTournamentPage as SupabaseEditTournamentPage } from './pages/tournaments/EditTournamentPage'
 import { MyRegistrationsPage as SupabaseMyRegistrationsPage } from './pages/tournaments/MyRegistrationsPage'
 import { PublicTournamentPage as SupabasePublicTournamentPage } from './pages/tournaments/PublicTournamentPage'
+import { TeamDetailsPage as SupabaseTeamDetailsPage } from './pages/tournaments/TeamDetailsPage'
 import { TournamentParticipantsPage as SupabaseTournamentParticipantsPage } from './pages/tournaments/TournamentParticipantsPage'
+import { TournamentTeamsPage as SupabaseTournamentTeamsPage } from './pages/tournaments/TournamentTeamsPage'
 import { TournamentsPage as SupabaseTournamentsPage } from './pages/tournaments/TournamentsPage'
 
 type PageId =
@@ -136,6 +138,27 @@ function AppRouter() {
     return (
       <SupabaseTournamentParticipantsPage
         tournamentId={decodeURIComponent(participantsTournamentMatch[1])}
+      />
+    )
+  }
+
+  const teamDetailsMatch = normalizedRoute.match(/^\/torneios\/([^/]+)\/equipes\/([^/]+)$/)
+  if (teamDetailsMatch) {
+    return (
+      <ProtectedRoute>
+        <SupabaseTeamDetailsPage
+          tournamentId={decodeURIComponent(teamDetailsMatch[1])}
+          teamId={decodeURIComponent(teamDetailsMatch[2])}
+        />
+      </ProtectedRoute>
+    )
+  }
+
+  const teamsTournamentMatch = normalizedRoute.match(/^\/torneios\/([^/]+)\/equipes$/)
+  if (teamsTournamentMatch) {
+    return (
+      <SupabaseTournamentTeamsPage
+        tournamentId={decodeURIComponent(teamsTournamentMatch[1])}
       />
     )
   }

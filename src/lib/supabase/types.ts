@@ -25,6 +25,17 @@ export type TournamentStatus =
 
 export type RegistrationType = 'individual' | 'team'
 
+export type TeamStatus =
+  | 'draft'
+  | 'pending'
+  | 'confirmed'
+  | 'cancelled'
+  | 'rejected'
+
+export type TeamMemberRole = 'captain' | 'member'
+
+export type TeamMemberStatus = 'active' | 'removed'
+
 export type TournamentRegistrationStatus =
   | 'pending'
   | 'confirmed'
@@ -83,6 +94,9 @@ export type Tournament = {
   registration_type: RegistrationType
   team_min_size: number
   team_max_size: number
+  allow_free_agents: boolean
+  require_full_team_before_registration: boolean
+  team_registration_deadline: string | null
   starts_at: string | null
   ends_at: string | null
   created_by: string
@@ -94,6 +108,7 @@ export type TournamentRegistration = {
   id: string
   tournament_id: string
   user_id: string
+  team_id: string | null
   display_name: string
   status: TournamentRegistrationStatus
   registration_type: RegistrationType
@@ -103,6 +118,58 @@ export type TournamentRegistration = {
   decided_at: string | null
   cancelled_by: string | null
   cancelled_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type Team = {
+  id: string
+  tournament_id: string
+  name: string
+  status: TeamStatus
+  captain_id: string
+  created_by: string
+  registration_id: string | null
+  admin_notes: string | null
+  decided_by: string | null
+  decided_at: string | null
+  cancelled_by: string | null
+  cancelled_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TeamMember = {
+  id: string
+  tournament_id: string
+  team_id: string
+  user_id: string
+  role: TeamMemberRole
+  status: TeamMemberStatus
+  added_by: string | null
+  removed_by: string | null
+  removed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ProfileLookupResult = {
+  id: string
+  display_name: string
+  email: string | null
+  ra: string | null
+  avatar_key: AvatarKey
+}
+
+export type TeamMemberWithProfile = {
+  id: string
+  tournament_id: string
+  team_id: string
+  user_id: string
+  display_name: string
+  avatar_key: AvatarKey
+  role: TeamMemberRole
+  status: TeamMemberStatus
   created_at: string
   updated_at: string
 }
@@ -175,6 +242,9 @@ export type Database = {
               | 'registration_type'
               | 'team_min_size'
               | 'team_max_size'
+              | 'allow_free_agents'
+              | 'require_full_team_before_registration'
+              | 'team_registration_deadline'
               | 'starts_at'
               | 'ends_at'
             >
@@ -193,6 +263,9 @@ export type Database = {
             | 'registration_type'
             | 'team_min_size'
             | 'team_max_size'
+            | 'allow_free_agents'
+            | 'require_full_team_before_registration'
+            | 'team_registration_deadline'
             | 'starts_at'
             | 'ends_at'
           >
@@ -208,7 +281,7 @@ export type Database = {
           Partial<
             Pick<
               TournamentRegistration,
-              'status' | 'registration_type' | 'captain_user_id'
+              'status' | 'registration_type' | 'captain_user_id' | 'team_id'
             >
           >
         Update: Partial<
@@ -222,6 +295,34 @@ export type Database = {
             | 'cancelled_by'
             | 'cancelled_at'
           >
+        >
+        Relationships: []
+      }
+      teams: {
+        Row: Team
+        Insert: Pick<Team, 'tournament_id' | 'name' | 'captain_id' | 'created_by'> &
+          Partial<Pick<Team, 'status' | 'registration_id' | 'admin_notes'>>
+        Update: Partial<
+          Pick<
+            Team,
+            | 'name'
+            | 'status'
+            | 'registration_id'
+            | 'admin_notes'
+            | 'decided_by'
+            | 'decided_at'
+            | 'cancelled_by'
+            | 'cancelled_at'
+          >
+        >
+        Relationships: []
+      }
+      team_members: {
+        Row: TeamMember
+        Insert: Pick<TeamMember, 'team_id' | 'user_id'> &
+          Partial<Pick<TeamMember, 'tournament_id' | 'role' | 'status' | 'added_by'>>
+        Update: Partial<
+          Pick<TeamMember, 'role' | 'status' | 'removed_by' | 'removed_at'>
         >
         Relationships: []
       }
@@ -246,9 +347,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      find_profile_for_team_member: {
+        Args: {
+          identifier: string
+        }
+        Returns: ProfileLookupResult[]
+      }
+      get_team_members_with_profiles: {
+        Args: {
+          target_team_id: string
+        }
+        Returns: TeamMemberWithProfile[]
+      }
       is_admin: {
         Args: Record<string, never>
         Returns: boolean
+      }
+      submit_team_registration: {
+        Args: {
+          target_team_id: string
+        }
+        Returns: string
       }
     }
     Enums: {
@@ -258,6 +377,9 @@ export type Database = {
       tournament_status: TournamentStatus
       tournament_registration_status: TournamentRegistrationStatus
       registration_type: RegistrationType
+      team_status: TeamStatus
+      team_member_role: TeamMemberRole
+      team_member_status: TeamMemberStatus
     }
     CompositeTypes: Record<string, never>
   }

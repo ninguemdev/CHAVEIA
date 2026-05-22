@@ -167,3 +167,21 @@ As regras devem reduzir incentivos para perder de propósito, manipular saldo ou
 - Policies devem garantir que somente admins ou usuários autorizados alterem torneios, partidas, resultados e disputas.
 - Chaves privadas e service role keys nunca devem ser usadas no front-end.
 - Validações de permissão devem ser testadas com chamadas diretas ao banco/API, não apenas pela interface.
+
+## Atualização: equipes reais no MVP
+
+- Torneio individual (`registration_type = individual`) usa inscrição direta em `tournament_registrations`.
+- Torneio por equipe (`registration_type = team`) exige criação de `teams` e membros em `team_members`.
+- O criador da equipe vira capitão automaticamente.
+- Cada equipe deve ter exatamente um capitão ativo.
+- O capitão pode editar nome, adicionar membros e remover membros não capitães enquanto as inscrições estiverem abertas.
+- Admin global e organizador autorizado do torneio podem gerenciar qualquer equipe daquele torneio.
+- Usuário comum não pode editar equipe de outro capitão.
+- Um usuário só pode participar de uma equipe ativa por torneio.
+- Um capitão só pode ter uma equipe ativa por torneio.
+- O nome da equipe deve ter pelo menos dois caracteres e não pode duplicar outro nome ativo no mesmo torneio.
+- Equipe com menos membros que `team_min_size` não pode ser enviada para inscrição quando `require_full_team_before_registration` estiver ativo.
+- Equipe com mais membros que `team_max_size` é bloqueada por trigger no banco.
+- O envio da equipe cria uma inscrição `pending` com `registration_type = team` e `team_id`.
+- A aprovação, rejeição ou cancelamento da inscrição atualiza o status da equipe, preservando histórico.
+- Convite por email com aceite do convidado fica planejado para versão futura; no MVP o capitão adiciona usuários existentes por email ou RA exato.

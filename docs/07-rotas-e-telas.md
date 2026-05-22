@@ -55,3 +55,25 @@ As rotas abaixo são proposta inicial. A implementação pode começar sem rotea
 - **Usuário principal:** público para confirmados; admin/organizador para gestão completa.
 - **Componentes adicionais:** tabela de inscritos, observação administrativa, ações confirmar/rejeitar/cancelar.
 - **Estados:** sem participantes confirmados, pendências internas, erro de permissão, ação inválida por status.
+
+## Atualização: telas de equipes
+
+### `/torneios/:id/equipes`
+
+- **Objetivo:** listar equipes do torneio e permitir criação de equipe pelo capitão quando o torneio for por equipe.
+- **Usuário principal:** capitão, organizador e admin.
+- **Componentes:** TeamCard, TeamStatusBadge, contador mínimo/máximo, formulário de criação de equipe, empty state.
+- **Estados:** torneio individual, login necessário, inscrições fechadas, equipe já criada, carregando, erro, vazio e sucesso.
+
+### `/torneios/:id/equipes/:teamId`
+
+- **Objetivo:** exibir detalhes da equipe, membros e ações de gestão.
+- **Usuário principal:** capitão; organizador/admin para revisão.
+- **Componentes:** formulário de nome da equipe, lista de membros, badge de capitão, busca por email/RA, ações de remover membro e enviar inscrição.
+- **Estados:** equipe incompleta, equipe completa, pendente, confirmada, rejeitada, cancelada, carregando, erro e sem permissão.
+
+### Integração com `/torneios/:id`
+
+- Torneios individuais exibem botão de inscrição direta.
+- Torneios por equipe exibem chamada para criar ou acessar equipes.
+- Participantes públicos continuam derivados de inscrições `confirmed` ou `checked_in`.

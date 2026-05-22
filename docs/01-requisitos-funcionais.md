@@ -181,3 +181,16 @@ Prioridades:
 | RF-068 | Permitir gestão de inscrições por admin e organizador autorizado do torneio. | MVP | Gestor vê todos os inscritos do torneio e pode confirmar, rejeitar ou cancelar conforme status permitido. |
 | RF-069 | Preparar inscrição individual e por equipe. | Importante | Torneio registra `registration_type`, `team_min_size`, `team_max_size`; inscrição de equipe registra capitão futuro. |
 | RF-070 | Não expor pedidos pendentes publicamente. | MVP | Página pública lista apenas participantes `confirmed` ou `checked_in`; pendências ficam restritas ao inscrito e gestores. |
+
+## Atualização: equipes reais
+
+| Código | Descrição | Prioridade | Critério de aceite |
+| --- | --- | --- | --- |
+| RF-071 | Permitir torneios com `registration_type = individual` ou `team`. | MVP | Torneio individual usa inscrição direta; torneio por equipe usa criação de equipe antes da inscrição. |
+| RF-072 | Configurar `team_min_size`, `team_max_size`, `allow_free_agents`, `require_full_team_before_registration` e prazo opcional de equipe. | MVP | Formulário de torneio salva as configurações e o banco valida limites coerentes. |
+| RF-073 | Permitir que usuário autenticado crie uma equipe em torneio por equipe com inscrições abertas. | MVP | Criador vira capitão automaticamente e não consegue criar múltiplas equipes ativas no mesmo torneio. |
+| RF-074 | Permitir que capitão adicione e remova membros existentes por email ou RA. | MVP | Sistema impede membro duplicado na equipe e em outra equipe ativa do mesmo torneio. |
+| RF-075 | Validar tamanho mínimo e máximo de equipe. | MVP | Equipe incompleta não pode ser enviada quando o torneio exige equipe completa; equipe acima do máximo é bloqueada no banco. |
+| RF-076 | Permitir envio de equipe para inscrição. | MVP | RPC cria `tournament_registrations` com `registration_type = team`, `team_id` e status `pending`. |
+| RF-077 | Sincronizar decisão da inscrição com status da equipe. | MVP | Confirmação, rejeição ou cancelamento administrativo atualiza `teams.status` sem apagar histórico. |
+| RF-078 | Permitir gestão de equipes por admin, organizador do torneio e capitão dentro das regras. | MVP | RLS bloqueia edição de equipe alheia por usuário comum. |

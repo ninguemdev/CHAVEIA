@@ -455,3 +455,60 @@ Regras:
 - Usuário comum só pode criar e cancelar a própria inscrição.
 - Admin ou organizador autorizado do torneio pode confirmar, rejeitar e cancelar inscrições do torneio.
 - Página pública só deve exibir inscrições `confirmed` ou `checked_in`.
+
+## Atualização: equipes reais
+
+### Decisão de modelagem
+
+Torneio individual continua usando `tournament_registrations.user_id` como participante. Torneio por equipe usa `teams` e `team_members`; quando o capitão envia a equipe, o sistema cria uma inscrição em `tournament_registrations` com `registration_type = team`, `team_id` e `captain_user_id`. Assim a triagem administrativa continua centralizada em inscrições, mas os membros ficam normalizados em tabelas próprias.
+
+### Tournament
+
+Campos de equipe:
+
+- `registration_type`: `individual | team`.
+- `team_min_size`: tamanho mínimo de membros ativos.
+- `team_max_size`: tamanho máximo de membros ativos.
+- `allow_free_agents`: reserva para fluxo futuro de jogadores sem equipe.
+- `require_full_team_before_registration`: quando verdadeiro, bloqueia envio de equipe incompleta.
+- `team_registration_deadline`: prazo opcional específico para equipes.
+
+### Team
+
+- `id`: uuid, obrigatório.
+- `tournament_id`: uuid, FK para `tournaments`.
+- `name`: texto obrigatório, mínimo de dois caracteres.
+- `status`: `draft | pending | confirmed | cancelled | rejected`.
+- `captain_id`: uuid, FK para `profiles`.
+- `created_by`: uuid, FK para `profiles`.
+- `registration_id`: uuid opcional, FK lógica para inscrição criada.
+- `admin_notes`: texto opcional.
+- `decided_by`, `decided_at`: decisão administrativa.
+- `cancelled_by`, `cancelled_at`: cancelamento.
+- `created_at`, `updated_at`: timestamps.
+
+Regras:
+
+- Nome ativo não pode duplicar outro nome ativo no mesmo torneio.
+- Capitão não pode ter mais de uma equipe ativa no mesmo torneio.
+- Equipe só pode ser criada em torneio `team` com `registrations_open`.
+- Equipe `confirmed`, `rejected` ou `cancelled` preserva histórico.
+
+### TeamMember
+
+- `id`: uuid, obrigatório.
+- `tournament_id`: uuid, redundância controlada para índice/RLS.
+- `team_id`: uuid, FK para `teams`.
+- `user_id`: uuid, FK para `profiles`.
+- `role`: `captain | member`.
+- `status`: `active | removed`.
+- `added_by`: uuid, quem adicionou.
+- `removed_by`, `removed_at`: auditoria de remoção.
+- `created_at`, `updated_at`: timestamps.
+
+Regras:
+
+- Exatamente um capitão ativo por equipe.
+- Um usuário não pode estar ativo em duas equipes do mesmo torneio.
+- Capitão não pode ser removido no MVP; transferência de capitania fica para versão futura.
+- Capitão, admin ou organizador autorizado gerencia membros enquanto as inscrições permitirem.
