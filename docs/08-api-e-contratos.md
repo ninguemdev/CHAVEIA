@@ -217,3 +217,44 @@ Quando Supabase for implementado:
 - **Validações:** disputa aberta; justificativa; impacto em ranking/chave calculável.
 - **Erros possíveis:** `NOT_FOUND`, `DISPUTE_ALREADY_RESOLVED`, `PERMISSION_DENIED`, `DEPENDENT_MATCH_WARNING`.
 - **Permissões:** admin.
+## Atualização: contratos de inscrições
+
+### Criar inscrição
+
+- **Entrada:** `tournament_id`, `user_id`, `display_name`, `registration_type`.
+- **Saída:** inscrição criada com status `pending`.
+- **Validações:** usuário autenticado; torneio em `registrations_open`; tipo de inscrição compatível; limite não atingido; sem inscrição ativa duplicada.
+- **Erros possíveis:** `not_authenticated`, `registration_closed`, `duplicate_registration`, `capacity_reached`, `rls_denied`.
+- **Permissões:** usuário cria apenas a própria inscrição; RLS e trigger validam no banco.
+
+### Cancelar própria inscrição
+
+- **Entrada:** `registration_id`.
+- **Saída:** inscrição com status `cancelled`, `cancelled_by` e `cancelled_at`.
+- **Validações:** inscrição pertence ao usuário; status `pending` ou `confirmed`; torneio ainda não começou.
+- **Erros possíveis:** `not_owner`, `invalid_status`, `tournament_not_cancellable`.
+- **Permissões:** usuário comum só cancela a própria inscrição.
+
+### Listar minhas inscrições
+
+- **Entrada:** sessão autenticada.
+- **Saída:** inscrições do usuário com resumo do torneio.
+- **Validações:** sessão válida.
+- **Erros possíveis:** `not_authenticated`, `rls_denied`.
+- **Permissões:** usuário lê apenas inscrições próprias; admin não usa este contrato para auditoria global.
+
+### Gerenciar inscrição
+
+- **Entrada:** `registration_id`, novo `status` (`confirmed`, `rejected`, `cancelled`), `admin_notes` opcional.
+- **Saída:** inscrição atualizada com auditoria de decisão/cancelamento.
+- **Validações:** ator é admin ou organizador autorizado do torneio; status do torneio permite ação; inscrição cancelada/rejeitada não é reativada.
+- **Erros possíveis:** `not_manager`, `invalid_status_transition`, `tournament_status_blocked`.
+- **Permissões:** `public.can_manage_tournament(tournament_id)` controla RLS.
+
+### Listar participantes públicos
+
+- **Entrada:** `tournament_id`.
+- **Saída:** inscrições `confirmed` ou `checked_in`.
+- **Validações:** torneio publicado.
+- **Erros possíveis:** `not_found`, `draft_not_public`.
+- **Permissões:** público pode ler apenas participantes confirmados/check-in; pendentes ficam protegidos.

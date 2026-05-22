@@ -33,4 +33,25 @@ As rotas abaixo são proposta inicial. A implementação pode começar sem rotea
 - Estados de erro devem explicar o problema e sugerir ação.
 - Estados vazios devem indicar o próximo passo.
 - Estados sem permissão não devem esconder completamente o motivo.
+## Atualização: inscrições
 
+### `/minhas-inscricoes`
+
+- **Objetivo:** permitir que usuário acompanhe e cancele as próprias inscrições.
+- **Usuário principal:** usuário autenticado.
+- **Componentes:** cards de inscrição, badge de status, link para torneio, botão de cancelamento.
+- **Estados:** vazio, carregando, erro, sucesso, ação bloqueada.
+
+### `/torneios/:id`
+
+- **Objetivo adicional:** exibir estado de inscrição do usuário no torneio.
+- **Usuário principal:** visitante e usuário autenticado.
+- **Componentes adicionais:** formulário de inscrição, estado "login necessário", estado "já inscrito", estado "inscrições fechadas", lista pública de confirmados.
+- **Estados:** sem login, pendente, confirmada, rejeitada, cancelada, lotado, fechado.
+
+### `/torneios/:id/participantes`
+
+- **Objetivo adicional:** servir como lista pública e painel de gestão de inscritos.
+- **Usuário principal:** público para confirmados; admin/organizador para gestão completa.
+- **Componentes adicionais:** tabela de inscritos, observação administrativa, ações confirmar/rejeitar/cancelar.
+- **Estados:** sem participantes confirmados, pendências internas, erro de permissão, ação inválida por status.

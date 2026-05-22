@@ -90,3 +90,25 @@
 - **Tarefas:** pareamento suíço; Buchholz; evitar repetição; exportação; notificações.
 - **Critérios de aceite:** pareamentos auditáveis e ranking explicado.
 - **Riscos:** algoritmo suíço é mais complexo e deve ser amplamente testado.
+## Atualização do roadmap: inscrições e participantes
+
+### Fase 3.1 — Inscrições com status e histórico
+
+- **Objetivo:** finalizar fluxo de inscrição individual e preparar o modelo para equipes.
+- **Tarefas:** criar status `pending`, `confirmed`, `cancelled`, `rejected`, `checked_in`; impedir duplicidade ativa; listar "Minhas inscrições"; permitir cancelamento seguro.
+- **Critérios de aceite:** RLS bloqueia usuário comum de alterar inscrição alheia; cancelamento preserva histórico; página pública não mostra pendentes.
+- **Riscos:** migração de enum no Supabase pode exigir executar o bloco de novos valores antes do restante em bancos já existentes.
+
+### Fase 3.2 — Gestão de inscritos
+
+- **Objetivo:** permitir que admin e organizador autorizado façam triagem de inscrições.
+- **Tarefas:** painel de participantes com confirmar, rejeitar, cancelar e observação administrativa; função `can_manage_tournament()`.
+- **Critérios de aceite:** admin gerencia qualquer torneio; organizador gerencia apenas torneios próprios enquanto tiver permissão ativa; usuário revogado perde acesso.
+- **Riscos:** decisões de inscrição ainda não geram tabela dedicada de auditoria, apenas campos de decisão no registro.
+
+### Fase futura — Equipes completas
+
+- **Objetivo:** transformar inscrições por equipe em equipes com membros, capitão e substitutos.
+- **Tarefas:** criar `teams` e `team_members`; validar tamanho mínimo/máximo; permitir convite/aceite; integrar check-in por capitão.
+- **Critérios de aceite:** equipe completa vira participante confirmado; membros não podem estar duplicados no mesmo torneio.
+- **Riscos:** exigir confirmação de todos os membros pode impactar UX e prazo de inscrição.

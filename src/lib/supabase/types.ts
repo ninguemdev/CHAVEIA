@@ -23,7 +23,15 @@ export type TournamentStatus =
   | 'finished'
   | 'cancelled'
 
-export type TournamentRegistrationStatus = 'registered' | 'cancelled'
+export type RegistrationType = 'individual' | 'team'
+
+export type TournamentRegistrationStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'cancelled'
+  | 'rejected'
+  | 'checked_in'
+  | 'registered'
 
 export type Profile = {
   id: string
@@ -72,6 +80,9 @@ export type Tournament = {
   format: string
   status: TournamentStatus
   max_participants: number
+  registration_type: RegistrationType
+  team_min_size: number
+  team_max_size: number
   starts_at: string | null
   ends_at: string | null
   created_by: string
@@ -85,6 +96,13 @@ export type TournamentRegistration = {
   user_id: string
   display_name: string
   status: TournamentRegistrationStatus
+  registration_type: RegistrationType
+  captain_user_id: string | null
+  admin_notes: string | null
+  decided_by: string | null
+  decided_at: string | null
+  cancelled_by: string | null
+  cancelled_at: string | null
   created_at: string
   updated_at: string
 }
@@ -154,6 +172,9 @@ export type Database = {
               | 'description'
               | 'campus'
               | 'max_participants'
+              | 'registration_type'
+              | 'team_min_size'
+              | 'team_max_size'
               | 'starts_at'
               | 'ends_at'
             >
@@ -169,6 +190,9 @@ export type Database = {
             | 'format'
             | 'status'
             | 'max_participants'
+            | 'registration_type'
+            | 'team_min_size'
+            | 'team_max_size'
             | 'starts_at'
             | 'ends_at'
           >
@@ -181,8 +205,24 @@ export type Database = {
           TournamentRegistration,
           'tournament_id' | 'user_id' | 'display_name'
         > &
-          Partial<Pick<TournamentRegistration, 'status'>>
-        Update: Partial<Pick<TournamentRegistration, 'display_name' | 'status'>>
+          Partial<
+            Pick<
+              TournamentRegistration,
+              'status' | 'registration_type' | 'captain_user_id'
+            >
+          >
+        Update: Partial<
+          Pick<
+            TournamentRegistration,
+            | 'display_name'
+            | 'status'
+            | 'admin_notes'
+            | 'decided_by'
+            | 'decided_at'
+            | 'cancelled_by'
+            | 'cancelled_at'
+          >
+        >
         Relationships: []
       }
     }
@@ -200,6 +240,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_manage_tournament: {
+        Args: {
+          target_tournament_id: string
+        }
+        Returns: boolean
+      }
       is_admin: {
         Args: Record<string, never>
         Returns: boolean
@@ -211,6 +257,7 @@ export type Database = {
       creator_permission_status: CreatorPermissionStatus
       tournament_status: TournamentStatus
       tournament_registration_status: TournamentRegistrationStatus
+      registration_type: RegistrationType
     }
     CompositeTypes: Record<string, never>
   }

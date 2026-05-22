@@ -1,16 +1,21 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { TournamentRegistrationStatusBadge } from '../../components/tournament/TournamentRegistrationStatusBadge'
 import { SupabaseTournamentStatusBadge } from '../../components/tournament/TournamentStatusBadge'
 import { AuthenticatedShell } from '../../components/layout/AuthenticatedShell'
 import { useAuth } from '../../context/auth'
 import type { TournamentRegistration } from '../../lib/supabase/types'
 import {
+  activeRegistrationStatuses,
   canManageTournament,
+  canUserCancelRegistration,
   cancelTournamentRegistration,
   fetchTournament,
   fetchTournamentRegistrations,
   findActiveRegistration,
   isPublicTournamentStatus,
+  publicParticipantStatuses,
   registerForTournament,
+  registrationTypeLabels,
   tournamentFormatLabels,
   tournamentStatusLabels,
   type TournamentWithCount,
@@ -25,7 +30,7 @@ function formatDate(value: string | null) {
 }
 
 export function PublicTournamentPage({ tournamentId }: { tournamentId: string }) {
-  const { user, profile, isAdmin } = useAuth()
+  const { user, profile, isAdmin, canCreateTournaments } = useAuth()
   const [tournament, setTournament] = useState<TournamentWithCount | null>(null)
   const [registrations, setRegistrations] = useState<TournamentRegistration[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -34,16 +39,30 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
   const [success, setSuccess] = useState('')
 
   const activeRegistrations = useMemo(
-    () => registrations.filter((registration) => registration.status === 'registered'),
+    () => registrations.filter((registration) =>
+      activeRegistrationStatuses.includes(registration.status),
+    ),
+    [registrations],
+  )
+  const publicParticipants = useMemo(
+    () => registrations.filter((registration) =>
+      publicParticipantStatuses.includes(registration.status),
+    ),
     [registrations],
   )
 
-  const activeRegistration = findActiveRegistration(activeRegistrations, user?.id)
+  const activeRegistration = findActiveRegistration(registrations, user?.id)
   const canRegister =
     tournament?.status === 'registrations_open' &&
+    Boolean(user) &&
     !activeRegistration &&
     activeRegistrations.length < (tournament?.max_participants ?? 0)
-  const canManage = tournament ? canManageTournament(tournament, user?.id, isAdmin) : false
+  const canManage = tournament
+    ? canManageTournament(tournament, user?.id, isAdmin, canCreateTournaments)
+    : false
+  const canCancelActiveRegistration =
+    Boolean(tournament && activeRegistration) &&
+    canUserCancelRegistration(tournament!, activeRegistration!)
 
   const loadTournament = useCallback(async () => {
     setIsLoading(true)
@@ -98,9 +117,14 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
     setIsSubmitting(true)
 
     try {
-      await registerForTournament(tournament.id, user.id, displayName)
+      await registerForTournament(
+        tournament.id,
+        user.id,
+        displayName,
+        tournament.registration_type,
+      )
       await loadTournament()
-      setSuccess('Inscrição confirmada.')
+      setSuccess('Pedido de inscrição enviado. Aguarde confirmação da organização.')
     } catch (registrationError) {
       setError(
         registrationError instanceof Error
@@ -207,6 +231,18 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
                 <dt>Inscritos</dt>
                 <dd>{activeRegistrations.length}/{tournament.max_participants}</dd>
               </div>
+              <div>
+                <dt>Tipo</dt>
+                <dd>{registrationTypeLabels[tournament.registration_type]}</dd>
+              </div>
+              {tournament.registration_type === 'team' && (
+                <div>
+                  <dt>Equipe</dt>
+                  <dd>
+                    {tournament.team_min_size} a {tournament.team_max_size} integrantes
+                  </dd>
+                </div>
+              )}
             </dl>
             <div className="card-actions">
               <a className="button button-secondary" href={`#/torneios/${tournament.id}/participantes`}>
@@ -239,21 +275,32 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
 
             {activeRegistration ? (
               <div className="registration-state">
-                <strong>Você já está inscrito.</strong>
+                <strong>Sua inscrição está registrada.</strong>
+                <TournamentRegistrationStatusBadge status={activeRegistration.status} />
                 <p>Nome na inscrição: {activeRegistration.display_name}</p>
+                {activeRegistration.admin_notes && (
+                  <p>Observação da organização: {activeRegistration.admin_notes}</p>
+                )}
                 <button
                   className="button button-secondary"
                   type="button"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !canCancelActiveRegistration}
                   onClick={() => void handleCancelRegistration()}
                 >
                   {isSubmitting ? 'Cancelando...' : 'Cancelar inscrição'}
                 </button>
+                {!canCancelActiveRegistration && (
+                  <p>A inscrição não pode ser cancelada neste status do torneio.</p>
+                )}
               </div>
             ) : canRegister ? (
               <form className="auth-form" onSubmit={handleRegister} noValidate>
                 <label className="field" htmlFor="registration-display-name">
-                  <span>Nome para inscrição</span>
+                  <span>
+                    {tournament.registration_type === 'team'
+                      ? 'Nome da equipe'
+                      : 'Nome para inscrição'}
+                  </span>
                   <input
                     id="registration-display-name"
                     name="display_name"
@@ -262,25 +309,71 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
                     required
                   />
                 </label>
+                <div className="registration-state">
+                  <strong>{registrationTypeLabels[tournament.registration_type]}</strong>
+                  <p>
+                    {tournament.registration_type === 'team'
+                      ? 'Nesta etapa, você será registrado como capitão. Cadastro completo de membros virá no módulo de equipes.'
+                      : 'Inscrição individual vinculada à sua conta.'}
+                  </p>
+                </div>
                 <button className="button button-primary" type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Inscrevendo...' : user ? 'Inscrever-se' : 'Entrar para se inscrever'}
+                  {isSubmitting ? 'Enviando...' : 'Enviar inscrição'}
                 </button>
               </form>
             ) : (
               <div className="registration-state">
-                <strong>Inscrição indisponível</strong>
-                <p>
-                  O torneio precisa estar com inscrições abertas e ter vagas
-                  disponíveis.
-                </p>
-                {!user && (
+                {!user ? (
+                  <>
+                    <strong>Login necessário</strong>
+                    <p>Entre com sua conta para solicitar inscrição neste torneio.</p>
+                  </>
+                ) : (
+                  <>
+                    <strong>Inscrição indisponível</strong>
+                    <p>
+                      O torneio precisa estar com inscrições abertas e ter vagas
+                      disponíveis.
+                    </p>
+                  </>
+                )}
+                {!user ? (
                   <a className="button button-secondary" href="#/login">
                     Entrar
                   </a>
-                )}
+                ) : null}
               </div>
             )}
           </article>
+        </section>
+
+        <section className="surface-panel">
+          <div className="section-heading">
+            <h2>Participantes confirmados</h2>
+            <p>{publicParticipants.length} participante(s) visíveis publicamente.</p>
+          </div>
+          {publicParticipants.length === 0 ? (
+            <div className="empty-state compact-empty">
+              <span className="empty-state-mark" aria-hidden="true">0</span>
+              <h3>Nenhum participante confirmado</h3>
+              <p>Inscrições pendentes aparecem somente para o inscrito e para a organização.</p>
+            </div>
+          ) : (
+            <div className="content-grid two-columns">
+              {publicParticipants.map((registration) => (
+                <article className="participant-card" key={registration.id}>
+                  <span className="avatar" aria-hidden="true">
+                    {registration.display_name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <div>
+                    <h3>{registration.display_name}</h3>
+                    <p>{registrationTypeLabels[registration.registration_type]}</p>
+                  </div>
+                  <TournamentRegistrationStatusBadge status={registration.status} />
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </AuthenticatedShell>

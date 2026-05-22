@@ -219,3 +219,19 @@ Verificar:
 - Deve aplicar placar padrão.
 - Deve registrar justificativa.
 - Deve permitir contestação quando dentro da regra.
+## Atualização: testes de inscrições
+
+- Usuário deslogado abre torneio com inscrições abertas e vê estado "login necessário"; tentativa de insert direto deve falhar por ausência de sessão.
+- Usuário logado cria inscrição e recebe status `pending`.
+- Usuário logado não consegue criar segunda inscrição ativa no mesmo torneio.
+- Usuário logado não consegue se inscrever em torneio `registrations_closed`, `ongoing`, `finished` ou `cancelled`.
+- Usuário vê suas inscrições em `/minhas-inscricoes`.
+- Usuário cancela inscrição `pending` ou `confirmed` antes do início do torneio; registro muda para `cancelled` e preserva timestamps.
+- Usuário não consegue cancelar inscrição de outro usuário.
+- Visitante público só vê participantes `confirmed` ou `checked_in`.
+- Admin confirma, rejeita e cancela inscrições em qualquer torneio permitido pelo status.
+- Organizador autorizado confirma, rejeita e cancela inscrições apenas nos torneios que criou.
+- Organizador com permissão revogada não consegue gerenciar inscrições nem criar novos torneios.
+- Torneio por equipe registra `registration_type = team` e `captain_user_id`, sem exigir cadastro completo de membros nesta etapa.
+- Testar limite de capacidade com inscrições `pending`, `confirmed` e `checked_in`.
+- Testar migração de inscrições legadas `registered` para `confirmed`.

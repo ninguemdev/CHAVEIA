@@ -15,7 +15,7 @@ import {
 } from '../../services/tournaments'
 
 export function EditTournamentPage({ tournamentId }: { tournamentId: string }) {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, canCreateTournaments } = useAuth()
   const [tournament, setTournament] = useState<Tournament | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -106,7 +106,7 @@ export function EditTournamentPage({ tournamentId }: { tournamentId: string }) {
     )
   }
 
-  if (!canManageTournament(tournament, user?.id, isAdmin)) {
+  if (!canManageTournament(tournament, user?.id, isAdmin, canCreateTournaments)) {
     return (
       <AccessDeniedPage
         title="Acesso negado"

@@ -168,3 +168,16 @@ Prioridades:
 | RF-060 | Não armazenar senha manualmente em tabelas próprias. | MVP | Senhas são tratadas exclusivamente pelo Supabase Auth. |
 | RF-061 | Validar no banco se o usuário pode criar, editar ou administrar torneios. | MVP | Operações diretas contra o banco são negadas sem role/policy adequada. |
 | RF-062 | Proteger dados administrativos e pessoais. | MVP | Usuários comuns acessam apenas dados públicos, próprios ou autorizados por policy. |
+
+## Atualização: participantes e inscrições
+
+| Código | Descrição | Prioridade | Critério de aceite |
+| --- | --- | --- | --- |
+| RF-063 | Permitir inscrição de usuário autenticado em torneio público com status `registrations_open`. | MVP | Usuário deslogado vê chamada para login; usuário logado cria inscrição `pending`. |
+| RF-064 | Bloquear inscrição em torneio com inscrições fechadas, em andamento, finalizado ou cancelado. | MVP | Tentativa pelo front-end e tentativa direta no banco são negadas por RLS/trigger. |
+| RF-065 | Evitar inscrição duplicada ativa no mesmo torneio. | MVP | Índice parcial impede mais de uma inscrição `pending`, `confirmed` ou `checked_in` por usuário e torneio. |
+| RF-066 | Permitir que usuário acompanhe as próprias inscrições. | MVP | Página "Minhas inscrições" mostra status, torneio, observações e ação de cancelamento quando permitida. |
+| RF-067 | Permitir cancelamento pelo próprio usuário antes do início do torneio. | MVP | Inscrição muda para `cancelled`, preservando histórico e sem exclusão física. |
+| RF-068 | Permitir gestão de inscrições por admin e organizador autorizado do torneio. | MVP | Gestor vê todos os inscritos do torneio e pode confirmar, rejeitar ou cancelar conforme status permitido. |
+| RF-069 | Preparar inscrição individual e por equipe. | Importante | Torneio registra `registration_type`, `team_min_size`, `team_max_size`; inscrição de equipe registra capitão futuro. |
+| RF-070 | Não expor pedidos pendentes publicamente. | MVP | Página pública lista apenas participantes `confirmed` ou `checked_in`; pendências ficam restritas ao inscrito e gestores. |

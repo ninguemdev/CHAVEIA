@@ -168,6 +168,38 @@
 - **Erros possíveis:** partidas pendentes; disputas abertas; ranking ambíguo sem decisão.
 - **Estado final:** status `finished`.
 
+## Usuário se inscreve em torneio
+
+- **Ator:** usuário autenticado.
+- **Pré-condições:** torneio público com status `registrations_open`; usuário sem inscrição ativa no mesmo torneio.
+- **Passos:** abrir página pública; informar nome de inscrição ou nome da equipe; enviar; sistema cria inscrição `pending`.
+- **Erros possíveis:** usuário deslogado; torneio fechado; limite atingido; inscrição ativa duplicada; policy RLS negando operação.
+- **Estado final:** inscrição pendente visível em "Minhas inscrições" e no painel do gestor.
+
+## Usuário cancela própria inscrição
+
+- **Ator:** usuário autenticado inscrito.
+- **Pré-condições:** inscrição `pending` ou `confirmed`; torneio ainda em `registrations_open` ou `registrations_closed`.
+- **Passos:** abrir "Minhas inscrições" ou página do torneio; acionar cancelamento; confirmar ação.
+- **Erros possíveis:** torneio em andamento/finalizado/cancelado; inscrição já rejeitada/cancelada; tentativa de alterar dados administrativos.
+- **Estado final:** inscrição fica `cancelled`, com `cancelled_by` e `cancelled_at`.
+
+## Organizador gerencia inscrições
+
+- **Ator:** admin global ou organizador autorizado do torneio.
+- **Pré-condições:** gestor autenticado; torneio sob sua administração; inscrições existentes.
+- **Passos:** abrir participantes; revisar pedidos; adicionar observação; confirmar, rejeitar ou cancelar inscrição.
+- **Erros possíveis:** organizador com permissão revogada; tentativa de gerenciar torneio de outro usuário; status do torneio não permite ação.
+- **Estado final:** inscrição atualizada com status e auditoria de decisão.
+
+## Preparação para equipes
+
+- **Ator:** organizador e futuro capitão.
+- **Pré-condições:** torneio configurado com `registration_type = team`.
+- **Passos:** organizador define tamanho mínimo/máximo; usuário informa nome da equipe; sistema registra `captain_user_id`.
+- **Erros possíveis:** tamanho de equipe inválido; tentativa de inscrição de tipo incompatível com o torneio.
+- **Estado final:** inscrição por equipe fica pronta para receber membros quando o módulo de equipes for implementado.
+
 ## Admin altera torneio em andamento ou encerrado
 
 - **Ator:** admin.

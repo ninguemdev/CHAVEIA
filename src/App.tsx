@@ -43,6 +43,7 @@ import { RequestTournamentCreatorPage } from './pages/auth/RequestTournamentCrea
 import { RegisterPage } from './pages/auth/RegisterPage'
 import { CreateTournamentPage as SupabaseCreateTournamentPage } from './pages/tournaments/CreateTournamentPage'
 import { EditTournamentPage as SupabaseEditTournamentPage } from './pages/tournaments/EditTournamentPage'
+import { MyRegistrationsPage as SupabaseMyRegistrationsPage } from './pages/tournaments/MyRegistrationsPage'
 import { PublicTournamentPage as SupabasePublicTournamentPage } from './pages/tournaments/PublicTournamentPage'
 import { TournamentParticipantsPage as SupabaseTournamentParticipantsPage } from './pages/tournaments/TournamentParticipantsPage'
 import { TournamentsPage as SupabaseTournamentsPage } from './pages/tournaments/TournamentsPage'
@@ -184,6 +185,12 @@ function AppRouter() {
       return (
         <ProtectedRoute>
           <MyCreatorRequestsPage />
+        </ProtectedRoute>
+      )
+    case '/minhas-inscricoes':
+      return (
+        <ProtectedRoute>
+          <SupabaseMyRegistrationsPage />
         </ProtectedRoute>
       )
     case '/acesso-negado':

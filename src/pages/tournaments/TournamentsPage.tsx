@@ -154,7 +154,12 @@ export function TournamentsPage() {
         ) : (
           <section className="content-grid tournament-grid" aria-label="Torneios cadastrados">
             {filteredTournaments.map((tournament) => {
-              const canManage = canManageTournament(tournament, user?.id, isAdmin)
+              const canManage = canManageTournament(
+                tournament,
+                user?.id,
+                isAdmin,
+                canCreateTournaments,
+              )
               const canDelete = canDeleteTournament(isAdmin)
 
               return (

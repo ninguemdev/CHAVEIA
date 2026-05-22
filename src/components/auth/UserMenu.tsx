@@ -47,6 +47,9 @@ export function UserMenu() {
       <a className="button button-secondary" href="#/torneios">
         Torneios
       </a>
+      <a className="button button-secondary" href="#/minhas-inscricoes">
+        Inscrições
+      </a>
       <a className="button button-secondary" href="#/meus-pedidos">
         Pedidos
       </a>

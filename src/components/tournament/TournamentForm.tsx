@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
-import type { Tournament, TournamentStatus } from '../../lib/supabase/types'
+import type { RegistrationType, Tournament, TournamentStatus } from '../../lib/supabase/types'
 import {
+  registrationTypeLabels,
   type TournamentFormValues,
   tournamentFormatLabels,
   tournamentStatusLabels,
@@ -46,6 +47,11 @@ export function TournamentForm({
     const modality = String(formData.get('modality') ?? '').trim()
     const format = String(formData.get('format') ?? '').trim()
     const maxParticipants = Number(formData.get('max_participants') ?? 0)
+    const registrationType = String(
+      formData.get('registration_type') ?? 'individual',
+    ) as RegistrationType
+    const teamMinSize = Number(formData.get('team_min_size') ?? 1)
+    const teamMaxSize = Number(formData.get('team_max_size') ?? 1)
 
     if (name.length < 4) {
       setLocalError('Informe um nome com pelo menos 4 caracteres.')
@@ -62,12 +68,25 @@ export function TournamentForm({
       return
     }
 
+    if (
+      !Number.isInteger(teamMinSize) ||
+      !Number.isInteger(teamMaxSize) ||
+      teamMinSize < 1 ||
+      teamMaxSize < teamMinSize
+    ) {
+      setLocalError('Informe tamanhos de equipe válidos.')
+      return
+    }
+
     await onSubmit({
       name,
       modality,
       format,
       status: String(formData.get('status') ?? 'draft') as TournamentStatus,
       max_participants: maxParticipants,
+      registration_type: registrationType,
+      team_min_size: registrationType === 'individual' ? 1 : teamMinSize,
+      team_max_size: registrationType === 'individual' ? 1 : teamMaxSize,
       campus: readNullableText(formData.get('campus')),
       description: readNullableText(formData.get('description')),
       starts_at: readNullableText(formData.get('starts_at')),
@@ -124,6 +143,21 @@ export function TournamentForm({
             />
           </label>
 
+          <label className="field" htmlFor="tournament-registration-type">
+            <span>Tipo de inscrição</span>
+            <select
+              id="tournament-registration-type"
+              name="registration_type"
+              defaultValue={initialTournament?.registration_type ?? 'individual'}
+            >
+              {Object.entries(registrationTypeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="field" htmlFor="tournament-max-participants">
             <span>Limite de participantes</span>
             <input
@@ -147,6 +181,42 @@ export function TournamentForm({
             placeholder="Explique contexto, regras iniciais e público esperado."
           />
         </label>
+      </section>
+
+      <section className="form-section" aria-labelledby="tournament-team-data">
+        <div className="section-heading">
+          <h2 id="tournament-team-data">Preparação para equipes</h2>
+          <p>
+            O cadastro completo de membros fica para uma etapa futura; estes
+            campos já registram o tipo de inscrição e limites de equipe.
+          </p>
+        </div>
+
+        <div className="form-grid">
+          <label className="field" htmlFor="tournament-team-min-size">
+            <span>Mínimo por equipe</span>
+            <input
+              id="tournament-team-min-size"
+              name="team_min_size"
+              type="number"
+              min="1"
+              defaultValue={initialTournament?.team_min_size ?? 1}
+              required
+            />
+          </label>
+
+          <label className="field" htmlFor="tournament-team-max-size">
+            <span>Máximo por equipe</span>
+            <input
+              id="tournament-team-max-size"
+              name="team_max_size"
+              type="number"
+              min="1"
+              defaultValue={initialTournament?.team_max_size ?? 1}
+              required
+            />
+          </label>
+        </div>
       </section>
 
       <section className="form-section" aria-labelledby="tournament-rules-data">

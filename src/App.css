@@ -416,6 +416,16 @@ dd {
   background: var(--color-danger-soft);
 }
 
+.badge-danger {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.badge-cancelled {
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+}
+
 .badge-request-pending {
   color: var(--color-info);
   background: var(--color-info-soft);
@@ -1180,9 +1190,25 @@ tbody tr:hover {
 .request-reason,
 .requester-summary,
 .admin-notes,
-.review-form {
+.review-form,
+.registration-admin-actions {
   display: grid;
   gap: var(--space-2);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.table-title {
+  display: block;
+  color: var(--color-heading);
+}
+
+.compact-empty {
+  padding: var(--space-4);
 }
 
 .request-reason h2 {

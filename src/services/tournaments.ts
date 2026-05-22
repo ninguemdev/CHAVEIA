@@ -1,7 +1,9 @@
 import { supabase } from '../lib/supabase/client'
 import type {
+  RegistrationType,
   Tournament,
   TournamentRegistration,
+  TournamentRegistrationStatus,
   TournamentStatus,
 } from '../lib/supabase/types'
 
@@ -17,8 +19,15 @@ export type TournamentFormValues = {
   format: string
   status: TournamentStatus
   max_participants: number
+  registration_type: RegistrationType
+  team_min_size: number
+  team_max_size: number
   starts_at: string | null
   ends_at: string | null
+}
+
+export type MyTournamentRegistration = TournamentRegistration & {
+  tournament: Tournament | null
 }
 
 export const tournamentStatusLabels: Record<TournamentStatus, string> = {
@@ -36,6 +45,36 @@ export const tournamentFormatLabels: Record<string, string> = {
   groups_playoffs: 'Grupos + playoffs',
   swiss: 'Sistema suíço',
 }
+
+export const registrationTypeLabels: Record<RegistrationType, string> = {
+  individual: 'Individual',
+  team: 'Equipe',
+}
+
+export const tournamentRegistrationStatusLabels: Record<
+  TournamentRegistrationStatus,
+  string
+> = {
+  pending: 'Pendente',
+  confirmed: 'Confirmada',
+  cancelled: 'Cancelada',
+  rejected: 'Rejeitada',
+  checked_in: 'Check-in feito',
+  registered: 'Confirmada',
+}
+
+export const activeRegistrationStatuses: TournamentRegistrationStatus[] = [
+  'pending',
+  'confirmed',
+  'checked_in',
+  'registered',
+]
+
+export const publicParticipantStatuses: TournamentRegistrationStatus[] = [
+  'confirmed',
+  'checked_in',
+  'registered',
+]
 
 function getTournamentError(message: string) {
   const normalized = message.toLowerCase()
@@ -67,8 +106,9 @@ export function canManageTournament(
   tournament: Pick<Tournament, 'created_by'>,
   userId: string | undefined,
   isAdmin: boolean,
+  canCreateTournaments = false,
 ) {
-  return isAdmin || Boolean(userId && tournament.created_by === userId)
+  return isAdmin || Boolean(canCreateTournaments && userId && tournament.created_by === userId)
 }
 
 export function canDeleteTournament(isAdmin: boolean) {
@@ -99,7 +139,7 @@ async function countRegistrations(tournaments: Tournament[]) {
     .from('tournament_registrations')
     .select('tournament_id, status')
     .in('tournament_id', ids)
-    .eq('status', 'registered')
+    .in('status', activeRegistrationStatuses)
 
   if (error) throw new Error(getTournamentError(error.message))
 
@@ -201,13 +241,54 @@ export async function fetchTournamentRegistrations(tournamentId: string) {
   return data
 }
 
+export async function fetchMyTournamentRegistrations(userId: string) {
+  const { data, error } = await supabase
+    .from('tournament_registrations')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(getTournamentError(error.message))
+
+  const tournamentIds = [...new Set(data.map((registration) => registration.tournament_id))]
+
+  if (tournamentIds.length === 0) return []
+
+  const { data: tournaments, error: tournamentsError } = await supabase
+    .from('tournaments')
+    .select('*')
+    .in('id', tournamentIds)
+
+  if (tournamentsError) throw new Error(getTournamentError(tournamentsError.message))
+
+  const tournamentsById = new Map(
+    tournaments.map((tournament) => [tournament.id, tournament]),
+  )
+
+  return data.map<MyTournamentRegistration>((registration) => ({
+    ...registration,
+    tournament: tournamentsById.get(registration.tournament_id) ?? null,
+  }))
+}
+
 export function findActiveRegistration(
   registrations: TournamentRegistration[],
   userId: string | undefined,
 ) {
   return registrations.find(
     (registration) =>
-      registration.user_id === userId && registration.status === 'registered',
+      registration.user_id === userId &&
+      activeRegistrationStatuses.includes(registration.status),
+  )
+}
+
+export function canUserCancelRegistration(
+  tournament: Pick<Tournament, 'status'>,
+  registration: Pick<TournamentRegistration, 'status'>,
+) {
+  return (
+    ['registrations_open', 'registrations_closed'].includes(tournament.status) &&
+    ['pending', 'confirmed', 'registered'].includes(registration.status)
   )
 }
 
@@ -215,6 +296,7 @@ export async function registerForTournament(
   tournamentId: string,
   userId: string,
   displayName: string,
+  registrationType: RegistrationType,
 ) {
   const { data, error } = await supabase
     .from('tournament_registrations')
@@ -222,7 +304,33 @@ export async function registerForTournament(
       tournament_id: tournamentId,
       user_id: userId,
       display_name: displayName,
+      status: 'pending',
+      registration_type: registrationType,
+      captain_user_id: registrationType === 'team' ? userId : null,
     })
+    .select('*')
+    .single()
+
+  if (error) throw new Error(getTournamentError(error.message))
+
+  return data
+}
+
+export async function updateTournamentRegistrationStatus(
+  registrationId: string,
+  status: Extract<
+    TournamentRegistrationStatus,
+    'confirmed' | 'rejected' | 'cancelled' | 'checked_in'
+  >,
+  adminNotes: string | null,
+) {
+  const { data, error } = await supabase
+    .from('tournament_registrations')
+    .update({
+      status,
+      admin_notes: adminNotes,
+    })
+    .eq('id', registrationId)
     .select('*')
     .single()
 

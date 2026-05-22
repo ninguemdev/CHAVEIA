@@ -411,3 +411,47 @@ Permissões de escrita sensível devem preferir funções RPC com `security defi
 - Registrar auditoria sem vazar informações desnecessárias.
 - Tratar `ra` como dado pessoal e exibi-lo apenas para o próprio usuário, admin ou contexto administrativo justificado.
 - Usar `avatar_key` em vez de upload de foto no MVP para reduzir risco de armazenamento indevido de imagem pessoal.
+
+## Atualização: inscrições e participantes
+
+No MVP, `tournament_registrations` é a entidade operacional de inscrição e também a base para listar participantes. Não há tabela separada de `tournament_participants` nesta etapa: participantes públicos são derivados de inscrições `confirmed` ou `checked_in`.
+
+### Tournament
+
+Campos adicionados:
+
+- `registration_type`: enum `individual | team`, obrigatório, padrão `individual`.
+- `team_min_size`: inteiro obrigatório, padrão `1`.
+- `team_max_size`: inteiro obrigatório, padrão `1`.
+
+Regras:
+
+- `team_min_size` deve ser maior que zero.
+- `team_max_size` deve ser maior ou igual a `team_min_size`.
+- Torneios individuais devem usar equipe mínima e máxima igual a `1` no front-end.
+
+### TournamentRegistration
+
+Campos principais:
+
+- `id`: uuid, obrigatório.
+- `tournament_id`: uuid, FK para `tournaments`.
+- `user_id`: uuid, FK para `profiles`.
+- `display_name`: texto exibido na inscrição.
+- `status`: enum `pending | confirmed | cancelled | rejected | checked_in`.
+- `registration_type`: enum `individual | team`.
+- `captain_user_id`: uuid opcional, preparado para torneios por equipe.
+- `admin_notes`: texto opcional para observação administrativa.
+- `decided_by` e `decided_at`: auditoria de confirmação, rejeição ou check-in.
+- `cancelled_by` e `cancelled_at`: auditoria de cancelamento.
+- `created_at` e `updated_at`: timestamps.
+
+Regras:
+
+- Nova inscrição começa como `pending`.
+- Apenas inscrições `pending`, `confirmed` e `checked_in` contam como ativas.
+- Índice parcial impede duplicidade ativa por `tournament_id + user_id`.
+- Cancelamento preserva histórico; não há exclusão física no fluxo normal.
+- Usuário comum só pode criar e cancelar a própria inscrição.
+- Admin ou organizador autorizado do torneio pode confirmar, rejeitar e cancelar inscrições do torneio.
+- Página pública só deve exibir inscrições `confirmed` ou `checked_in`.
