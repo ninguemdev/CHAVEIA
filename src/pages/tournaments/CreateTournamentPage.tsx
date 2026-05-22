@@ -17,7 +17,7 @@ export function CreateTournamentPage() {
     return (
       <AccessDeniedPage
         title="Permissão necessária"
-        description="Você precisa ser admin ou ter pedido aprovado para criar torneios."
+        description="Você precisa ser admin ou ter permissão ativa para criar torneios."
         actionHref="#/solicitar-criacao-torneio"
         actionLabel="Solicitar permissão"
       />

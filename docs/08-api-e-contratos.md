@@ -54,16 +54,25 @@ Quando Supabase for implementado:
 - **Validações:** usuário autenticado; justificativa presente; não há pedido pendente duplicado.
 - **Erros possíveis:** `DUPLICATED_PENDING_REQUEST`, `VALIDATION_ERROR`, `PERMISSION_DENIED`.
 - **Permissões:** usuário comum autenticado.
-- **Decisão de autorização:** a permissão de criar torneios é derivada de pedido `approved` em `tournament_creator_requests` ou de `role = admin`. Isso deve ser validado no banco por função segura como `public.can_create_tournaments()`, sem transformar o usuário aprovado em admin global.
+- **Decisão de autorização:** o pedido é histórico. A permissão efetiva vem de `tournament_creator_permissions.status = active` ou de `role = admin`. Isso deve ser validado no banco por função segura como `public.can_create_tournament()`, sem transformar o usuário aprovado em admin global.
 
 ## Decidir pedido de permissão
 
 - **Ação:** `decideTournamentCreatorRequest`
 - **Entrada:** `{ requestId, decision: "approved" | "rejected", adminNotes }`
-- **Saída:** `{ request, profile, auditLog }`
-- **Validações:** pedido pendente; justificativa da decisão; admin autenticado.
+- **Saída:** `{ request, permission?, profile, auditLog }`
+- **Validações:** pedido pendente; justificativa da decisão; admin autenticado; aprovação cria permissão ativa revogável.
 - **Erros possíveis:** `NOT_FOUND`, `REQUEST_ALREADY_DECIDED`, `PERMISSION_DENIED`.
 - **Permissões:** admin.
+
+## Revogar permissão de criação de torneios
+
+- **Ação:** `revokeTournamentCreatorPermission`
+- **Entrada:** `{ permissionId, revokeReason? }`
+- **Saída:** `{ permission }`
+- **Validações:** admin autenticado; permissão existe; permissão está `active`; motivo opcional registrado quando informado.
+- **Erros possíveis:** `NOT_FOUND`, `ALREADY_REVOKED`, `PERMISSION_DENIED`.
+- **Permissões:** admin. Usuário comum não pode alterar status da própria permissão.
 
 ## Atualizar configurações globais
 
@@ -81,7 +90,7 @@ Quando Supabase for implementado:
 - **Saída:** `{ tournament }`
 - **Validações:** nome obrigatório; datas coerentes; limite de participantes válido; `created_by = auth.uid()`.
 - **Erros possíveis:** `VALIDATION_ERROR`, `PERMISSION_DENIED`.
-- **Permissões:** admin ou usuário com permissão aprovada para criar torneios; RLS valida com `public.can_create_tournaments()`.
+- **Permissões:** admin ou usuário com permissão ativa para criar torneios; RLS valida com `public.can_create_tournament()`.
 
 ## Atualizar torneio
 
@@ -90,7 +99,7 @@ Quando Supabase for implementado:
 - **Saída:** `{ tournament }`
 - **Validações:** torneio existente; campos permitidos por status.
 - **Erros possíveis:** `NOT_FOUND`, `VALIDATION_ERROR`, `TOURNAMENT_LOCKED`.
-- **Permissões:** criador aprovado pode editar apenas torneios que criou; admin pode editar qualquer torneio, inclusive em andamento.
+- **Permissões:** criador com permissão ativa pode editar apenas torneios que criou; admin pode editar qualquer torneio, inclusive em andamento.
 
 ## Inscrever participante
 

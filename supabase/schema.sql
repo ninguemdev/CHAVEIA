@@ -44,6 +44,22 @@ begin
 end
 $$;
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    where typname = 'creator_permission_status'
+      and typnamespace = 'public'::regnamespace
+  ) then
+    create type public.creator_permission_status as enum (
+      'active',
+      'revoked'
+    );
+  end if;
+end
+$$;
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
@@ -123,6 +139,83 @@ create index if not exists profiles_role_idx
 create index if not exists tournament_creator_requests_user_status_idx
   on public.tournament_creator_requests (user_id, status);
 
+create table if not exists public.tournament_creator_permissions (
+  id uuid primary key default extensions.gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  status public.creator_permission_status not null default 'active',
+  granted_by uuid not null references public.profiles(id) on delete restrict,
+  granted_at timestamptz not null default now(),
+  revoked_by uuid references public.profiles(id) on delete set null,
+  revoked_at timestamptz,
+  grant_reason text,
+  revoke_reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint tournament_creator_permissions_status_consistency check (
+    (
+      status = 'active'::public.creator_permission_status
+      and revoked_by is null
+      and revoked_at is null
+    )
+    or (
+      status = 'revoked'::public.creator_permission_status
+      and revoked_by is not null
+      and revoked_at is not null
+    )
+  )
+);
+
+comment on table public.tournament_creator_permissions is
+  'Permissoes efetivas para criar torneios. Pedidos ficam como historico; esta tabela controla autorizacao ativa ou revogada.';
+comment on column public.tournament_creator_permissions.user_id is
+  'Usuario que recebeu permissao de criador de torneios.';
+comment on column public.tournament_creator_permissions.status is
+  'active permite criar torneios; revoked bloqueia novas criacoes sem apagar historico.';
+comment on column public.tournament_creator_permissions.granted_by is
+  'Admin que concedeu a permissao.';
+comment on column public.tournament_creator_permissions.revoked_by is
+  'Admin que revogou a permissao.';
+
+create unique index if not exists tournament_creator_permissions_one_active_per_user
+  on public.tournament_creator_permissions (user_id)
+  where status = 'active';
+
+create index if not exists tournament_creator_permissions_user_status_idx
+  on public.tournament_creator_permissions (user_id, status);
+
+-- Migra pedidos ja aprovados para permissoes ativas sem apagar historico.
+-- Se o schema for executado mais de uma vez, a condicao evita duplicar permissao ativa.
+select set_config('app.permission_backfill', 'on', true);
+
+insert into public.tournament_creator_permissions (
+  user_id,
+  status,
+  granted_by,
+  granted_at,
+  grant_reason,
+  created_at,
+  updated_at
+)
+select
+  request.user_id,
+  'active'::public.creator_permission_status,
+  request.reviewed_by,
+  coalesce(request.reviewed_at, request.updated_at, request.created_at, now()),
+  coalesce(request.admin_notes, request.reason),
+  now(),
+  now()
+from public.tournament_creator_requests request
+where request.status = 'approved'::public.request_status
+  and request.reviewed_by is not null
+  and not exists (
+    select 1
+    from public.tournament_creator_permissions permission
+    where permission.user_id = request.user_id
+      and permission.status = 'active'::public.creator_permission_status
+  );
+
+select set_config('app.permission_backfill', 'off', true);
+
 -- Função auxiliar para updated_at.
 create or replace function public.set_updated_at()
 returns trigger
@@ -161,11 +254,11 @@ grant execute on function public.is_admin() to authenticated;
 
 -- Verifica se o usuÃ¡rio pode criar torneios.
 -- DecisÃ£o de modelagem: no MVP a permissÃ£o de organizador Ã© derivada de
--- ao menos um pedido aprovado em tournament_creator_requests. Isso evita
--- confundir organizador aprovado com admin global e permite auditar quando a
+-- permissao ativa em tournament_creator_permissions. Isso evita
+-- confundir organizador aprovado com admin global e permite revogar acesso sem apagar
 -- permissÃ£o foi concedida. Policies futuras de tournaments devem chamar esta
 -- funÃ§Ã£o, nÃ£o confiar apenas no front-end.
-create or replace function public.can_create_tournaments(target_user_id uuid default auth.uid())
+create or replace function public.can_create_tournament(target_user_id uuid default auth.uid())
 returns boolean
 language sql
 stable
@@ -174,16 +267,36 @@ set search_path = public
 as $$
   select
     public.is_admin()
-    or exists (
-      select 1
-      from public.tournament_creator_requests
-      where user_id = target_user_id
-        and status = 'approved'::public.request_status
+    or (
+      target_user_id = auth.uid()
+      and exists (
+        select 1
+        from public.tournament_creator_permissions
+        where user_id = target_user_id
+          and status = 'active'::public.creator_permission_status
+      )
     );
 $$;
 
+comment on function public.can_create_tournament(uuid) is
+  'Retorna true para admin global ou usuario com permissao active. Nao altera role.';
+
+revoke all on function public.can_create_tournament(uuid) from public;
+grant execute on function public.can_create_tournament(uuid) to authenticated;
+
+-- Alias temporario para compatibilidade com codigo/policies antigos.
+create or replace function public.can_create_tournaments(target_user_id uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.can_create_tournament(target_user_id);
+$$;
+
 comment on function public.can_create_tournaments(uuid) is
-  'Retorna true para admin global ou usuÃ¡rio com pedido approved. NÃ£o altera role.';
+  'Alias de compatibilidade. Use public.can_create_tournament(uuid).';
 
 revoke all on function public.can_create_tournaments(uuid) from public;
 grant execute on function public.can_create_tournaments(uuid) to authenticated;
@@ -296,6 +409,30 @@ begin
       new.reviewed_at := coalesce(new.reviewed_at, now());
     end if;
 
+    if new.status = 'approved'::public.request_status
+      and old.status <> 'approved'::public.request_status
+    then
+      insert into public.tournament_creator_permissions (
+        user_id,
+        status,
+        granted_by,
+        granted_at,
+        grant_reason
+      )
+      select
+        new.user_id,
+        'active'::public.creator_permission_status,
+        auth.uid(),
+        now(),
+        coalesce(nullif(new.admin_notes, ''), new.reason)
+      where not exists (
+        select 1
+        from public.tournament_creator_permissions permission
+        where permission.user_id = new.user_id
+          and permission.status = 'active'::public.creator_permission_status
+      );
+    end if;
+
     return new;
   end if;
 
@@ -314,6 +451,58 @@ begin
     or new.admin_notes is distinct from old.admin_notes
   then
     raise exception 'Usuário comum não pode alterar campos administrativos do pedido.';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Valida escrita em permissoes efetivas.
+-- Usuario comum nao consegue criar, revogar, reativar nem editar permissao.
+-- Reativacao preservando historico deve criar nova permissao ativa, nao
+-- sobrescrever uma linha revogada.
+create or replace function public.validate_tournament_creator_permission_write()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if current_setting('app.permission_backfill', true) = 'on' then
+    return new;
+  end if;
+
+  if not public.is_admin() then
+    raise exception 'Apenas admins podem alterar permissoes de criador de torneios.';
+  end if;
+
+  if TG_OP = 'UPDATE' then
+    if new.id is distinct from old.id
+      or new.user_id is distinct from old.user_id
+      or new.granted_by is distinct from old.granted_by
+      or new.granted_at is distinct from old.granted_at
+      or new.grant_reason is distinct from old.grant_reason
+      or new.created_at is distinct from old.created_at
+    then
+      raise exception 'Campos historicos da permissao nao podem ser alterados.';
+    end if;
+
+    if old.status = 'revoked'::public.creator_permission_status
+      and new.status = 'active'::public.creator_permission_status
+    then
+      raise exception 'Para reativar, crie uma nova permissao ativa e mantenha a permissao revogada como historico.';
+    end if;
+  end if;
+
+  if new.status = 'active'::public.creator_permission_status then
+    new.revoked_by := null;
+    new.revoked_at := null;
+    new.revoke_reason := null;
+  end if;
+
+  if new.status = 'revoked'::public.creator_permission_status then
+    new.revoked_by := coalesce(new.revoked_by, auth.uid());
+    new.revoked_at := coalesce(new.revoked_at, now());
   end if;
 
   return new;
@@ -345,6 +534,20 @@ create trigger tournament_creator_requests_validate_update
   before update on public.tournament_creator_requests
   for each row
   execute function public.validate_tournament_creator_request_update();
+
+drop trigger if exists tournament_creator_permissions_set_updated_at
+  on public.tournament_creator_permissions;
+create trigger tournament_creator_permissions_set_updated_at
+  before update on public.tournament_creator_permissions
+  for each row
+  execute function public.set_updated_at();
+
+drop trigger if exists tournament_creator_permissions_validate_write
+  on public.tournament_creator_permissions;
+create trigger tournament_creator_permissions_validate_write
+  before insert or update on public.tournament_creator_permissions
+  for each row
+  execute function public.validate_tournament_creator_permission_write();
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -396,12 +599,14 @@ revoke all on function public.bootstrap_first_admin(uuid) from public;
 
 alter table public.profiles enable row level security;
 alter table public.tournament_creator_requests enable row level security;
+alter table public.tournament_creator_permissions enable row level security;
 
 -- Grants mínimos para uso via Supabase client.
 -- RLS continua sendo a barreira real de segurança.
 grant usage on schema public to authenticated;
 grant select, update on public.profiles to authenticated;
 grant select, insert, update on public.tournament_creator_requests to authenticated;
+grant select, insert, update on public.tournament_creator_permissions to authenticated;
 
 drop policy if exists "profiles_select_own" on public.profiles;
 drop policy if exists "profiles_select_admin" on public.profiles;
@@ -523,6 +728,58 @@ create policy "requests_review_admin"
 
 comment on policy "requests_review_admin" on public.tournament_creator_requests is
   'Permite que admins aprovem/rejeitem pedidos. Usuários comuns não conseguem virar admin por esta tabela.';
+
+drop policy if exists "creator_permissions_select_own" on public.tournament_creator_permissions;
+drop policy if exists "creator_permissions_select_admin" on public.tournament_creator_permissions;
+drop policy if exists "creator_permissions_insert_admin" on public.tournament_creator_permissions;
+drop policy if exists "creator_permissions_update_admin" on public.tournament_creator_permissions;
+
+-- Usuarios autenticados podem ver apenas a propria situacao de permissao.
+create policy "creator_permissions_select_own"
+  on public.tournament_creator_permissions
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+comment on policy "creator_permissions_select_own" on public.tournament_creator_permissions is
+  'Permite que usuario veja apenas permissoes proprias, inclusive revoked.';
+
+-- Admins podem auditar todas as permissoes.
+create policy "creator_permissions_select_admin"
+  on public.tournament_creator_permissions
+  for select
+  to authenticated
+  using (public.is_admin());
+
+comment on policy "creator_permissions_select_admin" on public.tournament_creator_permissions is
+  'Permite que admins vejam permissoes ativas e revogadas de todos os usuarios.';
+
+-- Apenas admins podem conceder permissao ativa.
+create policy "creator_permissions_insert_admin"
+  on public.tournament_creator_permissions
+  for insert
+  to authenticated
+  with check (
+    public.is_admin()
+    and status = 'active'::public.creator_permission_status
+    and granted_by = auth.uid()
+    and revoked_by is null
+    and revoked_at is null
+  );
+
+comment on policy "creator_permissions_insert_admin" on public.tournament_creator_permissions is
+  'Bloqueia criacao de permissao por usuario comum e exige admin como concedente.';
+
+-- Apenas admins podem revogar. A trigger impede sobrescrever historico revogado.
+create policy "creator_permissions_update_admin"
+  on public.tournament_creator_permissions
+  for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+comment on policy "creator_permissions_update_admin" on public.tournament_creator_permissions is
+  'Permite revogacao por admin; usuarios comuns nao alteram status da permissao.';
 
 -- ---------------------------------------------------------------------------
 -- Módulo inicial de torneios e inscrições
@@ -787,31 +1044,31 @@ create policy "tournaments_select_admin"
 comment on policy "tournaments_select_admin" on public.tournaments is
   'Permite que admin global visualize todos os torneios.';
 
--- Admin ou usuário com pedido aprovado pode criar torneio.
+-- Admin ou usuario com permissao ativa pode criar torneio.
 create policy "tournaments_insert_creator"
   on public.tournaments
   for insert
   to authenticated
   with check (
     created_by = auth.uid()
-    and public.can_create_tournaments()
+    and public.can_create_tournament()
   );
 
 comment on policy "tournaments_insert_creator" on public.tournaments is
-  'Permite criar torneio para admin ou usuário com pedido approved; usuário aprovado não vira admin.';
+  'Permite criar torneio para admin ou usuario com permissao active; usuario autorizado nao vira admin.';
 
--- Usuário aprovado só edita torneios criados por ele.
+-- Usuario com permissao ativa so edita torneios criados por ele.
 create policy "tournaments_update_owner"
   on public.tournaments
   for update
   to authenticated
   using (
     created_by = auth.uid()
-    and public.can_create_tournaments()
+    and public.can_create_tournament()
   )
   with check (
     created_by = auth.uid()
-    and public.can_create_tournaments()
+    and public.can_create_tournament()
   );
 
 comment on policy "tournaments_update_owner" on public.tournaments is

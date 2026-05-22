@@ -24,15 +24,15 @@
 ## Fase 3 - Permissões, admin e pedidos
 
 - **Objetivo:** controlar criação de torneios e ações administrativas.
-- **Tarefas:** roles `admin` e `user`; pedido para criar torneios; aprovação/rejeição por admin; configurações globais; bloqueio/desbloqueio de ações; auditoria inicial.
-- **Critérios de aceite:** usuário comum só cria torneio após aprovação; admin consegue decidir pedidos; RLS bloqueia operações indevidas.
+- **Tarefas:** roles `admin` e `user`; pedido para criar torneios; tabela revogável de permissões; aprovação/rejeição por admin; revogação de permissão ativa; configurações globais; bloqueio/desbloqueio de ações; auditoria inicial.
+- **Critérios de aceite:** usuário comum só cria torneio com permissão `active`; admin consegue decidir pedidos e revogar permissões; RLS bloqueia operações indevidas.
 - **Riscos:** confiar apenas na interface; esquecer auditoria em decisões administrativas.
 
 ## Fase 4 - CRUD de torneios
 
 - **Objetivo:** permitir criação e edição de torneios com persistência.
 - **Tarefas:** tabela `tournaments`; formulários; validações; RLS; listagem pública e administrativa.
-- **Critérios de aceite:** admin ou usuário aprovado cria, lista, edita e visualiza torneio; usuário sem permissão é bloqueado pelo banco.
+- **Critérios de aceite:** admin ou usuário com permissão ativa cria, lista, edita e visualiza torneio; usuário sem permissão ativa é bloqueado pelo banco.
 - **Riscos:** regras de edição por status ficarem ambíguas.
 
 ## Fase 5 - Participantes e inscrições

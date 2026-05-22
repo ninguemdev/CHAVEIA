@@ -23,16 +23,17 @@ Prioridades:
 | --- | --- | --- | --- |
 | RF-007 | Definir dois tipos principais de usuário: `admin` e `user`. | MVP | Perfil possui `role` controlado no banco; usuários comuns não conseguem promover a si mesmos. |
 | RF-008 | Permitir que usuários comuns solicitem permissão para criar torneios. | MVP | Solicitação é registrada com status pendente e visível para admins. |
-| RF-009 | Permitir que admins aprovem ou rejeitem pedidos de permissão. | MVP | Decisão altera o status da solicitação, registra auditoria e habilita/bloqueia criação de torneios. |
-| RF-010 | Restringir ações administrativas a admins ou usuários autorizados no torneio. | MVP | Usuário sem permissão recebe estado "sem permissão" e a operação também é negada por RLS no banco. |
+| RF-009 | Permitir que admins aprovem ou rejeitem pedidos de permissão. | MVP | Decisão altera o status da solicitação, registra auditoria e, quando aprovada, cria uma permissão ativa separada do pedido histórico. |
+| RF-010 | Restringir ações administrativas a admins ou usuários autorizados no torneio. | MVP | Usuário sem permissão ativa recebe estado "sem permissão" e a operação também é negada por RLS no banco. |
 | RF-011 | Permitir que admins bloqueiem ou desbloqueiem ações sensíveis quando necessário. | Importante | Bloqueio impede operações afetadas e registra justificativa. |
 | RF-012 | Validar permissões no banco, não apenas na interface. | MVP | Policies RLS ou RPCs protegidas impedem leitura/escrita indevida mesmo com requisição manual. |
+| RF-012A | Permitir que admins revoguem permissão ativa de criação de torneios. | MVP | Permissão passa para `revoked`, preserva histórico de concessão/revogação e bloqueia novas criações de torneio. |
 
 ## Torneios
 
 | Código | Descrição | Prioridade | Critério de aceite |
 | --- | --- | --- | --- |
-| RF-013 | Criar torneio com nome, modalidade, descrição, datas, formato e regras básicas. | MVP | Admin ou usuário com permissão aprovada cria torneio válido. |
+| RF-013 | Criar torneio com nome, modalidade, descrição, datas, formato e regras básicas. | MVP | Admin ou usuário com permissão ativa cria torneio válido. |
 | RF-014 | Editar dados do torneio antes da publicação. | MVP | Alterações são salvas e exibidas no detalhe para usuários autorizados. |
 | RF-015 | Publicar, pausar, finalizar ou cancelar torneio. | Importante | Status altera comportamento das inscrições, partidas e página pública. |
 | RF-016 | Permitir que admins alterem torneios em andamento ou encerrados. | Importante | Admin consegue aplicar ajuste excepcional com justificativa e auditoria. |

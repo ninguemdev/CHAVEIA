@@ -436,6 +436,16 @@ dd {
   background: var(--color-surface-muted);
 }
 
+.badge-permission-active {
+  color: var(--color-accent-strong);
+  background: var(--color-accent-soft);
+}
+
+.badge-permission-revoked {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
 .badge-tournament-draft {
   color: var(--color-text-muted);
   background: var(--color-surface-muted);

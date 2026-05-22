@@ -66,7 +66,10 @@ Garantir que regras de torneio, ranking, geração de partidas, permissões e in
 - Usuário comum não altera `role`, `can_create_tournaments` ou configurações globais.
 - Usuário comum solicita permissão para criar torneios.
 - Admin aprova ou rejeita pedido de criação de torneio.
-- Usuário aprovado cria torneio.
+- Aprovar pedido cria permissão `active` em `tournament_creator_permissions`.
+- Usuário com permissão ativa cria torneio.
+- Admin revoga permissão ativa e o usuário deixa de criar torneios.
+- Usuário revogado não consegue reativar permissão por chamada direta.
 - Usuário não aprovado não cria torneio mesmo tentando chamada direta.
 - Participante não corrige resultado confirmado sem permissão.
 - Capitão envia resultado da própria equipe.
@@ -90,12 +93,15 @@ Garantir que regras de torneio, ranking, geração de partidas, permissões e in
 
 Quando Supabase for implementado, criar testes ou validações manuais com usuários diferentes:
 
-- RLS habilitado em `profiles`, `tournaments`, `registrations`, `teams`, `matches`, `match_results`, `disputes`, `audit_logs`, `global_settings` e `tournament_creator_requests`.
+- RLS habilitado em `profiles`, `tournaments`, `registrations`, `teams`, `matches`, `match_results`, `disputes`, `audit_logs`, `global_settings`, `tournament_creator_requests` e `tournament_creator_permissions`.
 - Usuário A não lê dados privados do usuário B.
 - Usuário A não atualiza perfil do usuário B.
 - Usuário comum não altera `profiles.role`.
 - Usuário comum não atualiza `global_settings`.
 - Usuário comum não edita torneio sem autorização.
+- Usuário comum lê apenas a própria situação em `tournament_creator_permissions`.
+- Usuário comum não cria, edita, revoga nem reativa permissões.
+- `public.can_create_tournament()` retorna falso para usuário revogado e verdadeiro para admin.
 - Admin consegue ler dados administrativos.
 - Admin consegue alterar torneio em andamento/encerrado com auditoria.
 - Escrita direta no banco sem permissão é negada por policy, mesmo que a interface esconda o botão.

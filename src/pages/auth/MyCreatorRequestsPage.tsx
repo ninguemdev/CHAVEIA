@@ -1,19 +1,57 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CreatorPermissionCard } from '../../components/auth/CreatorPermissionCard'
 import { CreatorRequestCard } from '../../components/auth/CreatorRequestCard'
 import { AuthenticatedShell } from '../../components/layout/AuthenticatedShell'
 import { useAuth } from '../../context/auth'
-import type { TournamentCreatorRequest } from '../../lib/supabase/types'
+import type {
+  TournamentCreatorPermission,
+  TournamentCreatorRequest,
+} from '../../lib/supabase/types'
 import {
   cancelCreatorRequest,
+  fetchMyCreatorPermissions,
   fetchMyCreatorRequests,
 } from '../../services/tournamentCreatorRequests'
 
 export function MyCreatorRequestsPage() {
   const { user, refreshCreatorPermission } = useAuth()
   const [requests, setRequests] = useState<TournamentCreatorRequest[]>([])
+  const [permissions, setPermissions] = useState<TournamentCreatorPermission[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [busyRequestId, setBusyRequestId] = useState('')
   const [error, setError] = useState('')
+
+  const latestPendingRequest = requests.find((request) => request.status === 'pending')
+  const activePermission = permissions.find((permission) => permission.status === 'active')
+  const latestRevokedPermission = permissions.find((permission) => permission.status === 'revoked')
+
+  const permissionState = useMemo(() => {
+    if (activePermission) {
+      return {
+        title: 'Permissao aprovada',
+        description: 'Voce pode criar torneios enquanto a permissao estiver ativa.',
+      }
+    }
+
+    if (latestPendingRequest) {
+      return {
+        title: 'Pedido pendente',
+        description: 'Um admin ainda precisa aprovar ou rejeitar sua solicitacao.',
+      }
+    }
+
+    if (latestRevokedPermission) {
+      return {
+        title: 'Permissao revogada',
+        description: 'Voce nao pode criar torneios no momento. Envie um novo pedido se necessario.',
+      }
+    }
+
+    return {
+      title: 'Sem permissao',
+      description: 'Solicite autorizacao para organizar torneios academicos.',
+    }
+  }, [activePermission, latestPendingRequest, latestRevokedPermission])
 
   const loadRequests = useCallback(async () => {
     if (!user) return
@@ -22,13 +60,18 @@ export function MyCreatorRequestsPage() {
     setError('')
 
     try {
-      setRequests(await fetchMyCreatorRequests(user.id))
+      const [nextRequests, nextPermissions] = await Promise.all([
+        fetchMyCreatorRequests(user.id),
+        fetchMyCreatorPermissions(user.id),
+      ])
+      setRequests(nextRequests)
+      setPermissions(nextPermissions)
       await refreshCreatorPermission()
     } catch (loadError) {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : 'Não foi possível carregar seus pedidos.',
+          : 'Nao foi possivel carregar seus pedidos.',
       )
     } finally {
       setIsLoading(false)
@@ -55,7 +98,7 @@ export function MyCreatorRequestsPage() {
       setError(
         cancelError instanceof Error
           ? cancelError.message
-          : 'Não foi possível cancelar o pedido.',
+          : 'Nao foi possivel cancelar o pedido.',
       )
     } finally {
       setBusyRequestId('')
@@ -67,11 +110,11 @@ export function MyCreatorRequestsPage() {
       <div className="page-stack">
         <section className="page-header" aria-labelledby="my-requests-title">
           <div>
-            <span className="eyebrow">Organização</span>
+            <span className="eyebrow">Organizacao</span>
             <h1 id="my-requests-title">Meus pedidos</h1>
             <p>
-              Acompanhe o status das suas solicitações de permissão para criar
-              torneios.
+              Acompanhe pedidos historicos e a situacao atual da permissao de
+              criador de torneios.
             </p>
           </div>
           <div className="page-header-action">
@@ -79,6 +122,11 @@ export function MyCreatorRequestsPage() {
               Novo pedido
             </a>
           </div>
+        </section>
+
+        <section className="alert alert-info" role="status">
+          <strong>{permissionState.title}</strong>
+          <div>{permissionState.description}</div>
         </section>
 
         {error && (
@@ -92,27 +140,43 @@ export function MyCreatorRequestsPage() {
             <span className="spinner" aria-hidden="true" />
             <span>Carregando pedidos...</span>
           </div>
-        ) : requests.length === 0 ? (
-          <section className="empty-state">
-            <span className="empty-state-mark" aria-hidden="true">0</span>
-            <h2>Nenhum pedido enviado</h2>
-            <p>Solicite permissão para organizar torneios acadêmicos.</p>
-            <a className="button button-primary" href="#/solicitar-criacao-torneio">
-              Solicitar permissão
-            </a>
-          </section>
         ) : (
-          <section className="request-list" aria-label="Meus pedidos de criação">
-            {requests.map((request) => (
-              <CreatorRequestCard
-                key={request.id}
-                request={request}
-                mode="user"
-                isBusy={busyRequestId === request.id}
-                onCancel={handleCancel}
-              />
-            ))}
-          </section>
+          <>
+            {permissions.length > 0 && (
+              <section className="request-list" aria-label="Minha situacao de permissao">
+                {permissions.map((permission) => (
+                  <CreatorPermissionCard
+                    key={permission.id}
+                    permission={permission}
+                    mode="user"
+                  />
+                ))}
+              </section>
+            )}
+
+            {requests.length === 0 ? (
+              <section className="empty-state">
+                <span className="empty-state-mark" aria-hidden="true">0</span>
+                <h2>Nenhum pedido enviado</h2>
+                <p>Solicite permissao para organizar torneios academicos.</p>
+                <a className="button button-primary" href="#/solicitar-criacao-torneio">
+                  Solicitar permissao
+                </a>
+              </section>
+            ) : (
+              <section className="request-list" aria-label="Meus pedidos de criacao">
+                {requests.map((request) => (
+                  <CreatorRequestCard
+                    key={request.id}
+                    request={request}
+                    mode="user"
+                    isBusy={busyRequestId === request.id}
+                    onCancel={handleCancel}
+                  />
+                ))}
+              </section>
+            )}
+          </>
         )}
       </div>
     </AuthenticatedShell>

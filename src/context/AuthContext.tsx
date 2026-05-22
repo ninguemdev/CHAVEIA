@@ -31,7 +31,7 @@ function getReadableAuthError(message: string) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [hasApprovedCreatorRequest, setHasApprovedCreatorRequest] = useState(false)
+  const [hasActiveCreatorPermission, setHasActiveCreatorPermission] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [profileError, setProfileError] = useState('')
 
@@ -42,25 +42,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentUser = currentSession?.user ?? null
 
     if (!currentUser) {
-      setHasApprovedCreatorRequest(false)
+      setHasActiveCreatorPermission(false)
       return false
     }
 
     const { data, error } = await supabase
-      .from('tournament_creator_requests')
+      .from('tournament_creator_permissions')
       .select('id')
       .eq('user_id', currentUser.id)
-      .eq('status', 'approved')
+      .eq('status', 'active')
       .limit(1)
 
     if (error) {
-      setHasApprovedCreatorRequest(false)
+      setHasActiveCreatorPermission(false)
       return false
     }
 
-    const isApproved = data.length > 0
-    setHasApprovedCreatorRequest(isApproved)
-    return isApproved
+    const isActive = data.length > 0
+    setHasActiveCreatorPermission(isActive)
+    return isActive
   }, [])
 
   const refreshProfile = useCallback(async () => {
@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession)
       if (!nextSession) {
         setProfile(null)
-        setHasApprovedCreatorRequest(false)
+        setHasActiveCreatorPermission(false)
         setProfileError('')
         return
       }
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setSession(null)
     setProfile(null)
-    setHasApprovedCreatorRequest(false)
+    setHasActiveCreatorPermission(false)
     window.location.hash = '#/login'
   }
 
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       profile,
       isAdmin,
-      canCreateTournaments: isAdmin || hasApprovedCreatorRequest,
+      canCreateTournaments: isAdmin || hasActiveCreatorPermission,
       isLoading,
       profileError,
       refreshProfile,
@@ -164,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
     }),
     [
-      hasApprovedCreatorRequest,
+      hasActiveCreatorPermission,
       isAdmin,
       isLoading,
       profile,

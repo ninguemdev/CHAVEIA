@@ -64,6 +64,7 @@ Criar uma plataforma completa para torneios, com foco em:
 - Usuários comuns podem criar conta, fazer login, editar o próprio perfil, escolher avatar pré-definido via `avatar_key`, informar RA, visualizar torneios públicos, inscrever-se em torneios e pedir permissão para criar torneios.
 - Usuários comuns não podem alterar dados de outros usuários, configurações globais ou torneios sem autorização.
 - Permissão para criar/gerenciar torneios deve ser tratada como autorização explícita, aprovada por admin e registrada em banco/auditoria.
+- Pedido de permissão e permissão ativa são conceitos diferentes: pedidos ficam como histórico; a permissão ativa deve ser revogável e validada por RLS/funções SQL.
 
 ## Referências obrigatórias
 

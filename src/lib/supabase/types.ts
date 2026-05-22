@@ -13,6 +13,8 @@ export type TournamentCreatorRequestStatus =
   | 'rejected'
   | 'cancelled'
 
+export type CreatorPermissionStatus = 'active' | 'revoked'
+
 export type TournamentStatus =
   | 'draft'
   | 'registrations_open'
@@ -42,6 +44,20 @@ export type TournamentCreatorRequest = {
   reviewed_by: string | null
   reviewed_at: string | null
   admin_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TournamentCreatorPermission = {
+  id: string
+  user_id: string
+  status: CreatorPermissionStatus
+  granted_by: string
+  granted_at: string
+  revoked_by: string | null
+  revoked_at: string | null
+  grant_reason: string | null
+  revoke_reason: string | null
   created_at: string
   updated_at: string
 }
@@ -102,6 +118,30 @@ export type Database = {
         >
         Relationships: []
       }
+      tournament_creator_permissions: {
+        Row: TournamentCreatorPermission
+        Insert: Pick<
+          TournamentCreatorPermission,
+          'user_id' | 'status' | 'granted_by'
+        > &
+          Partial<
+            Pick<
+              TournamentCreatorPermission,
+              | 'granted_at'
+              | 'revoked_by'
+              | 'revoked_at'
+              | 'grant_reason'
+              | 'revoke_reason'
+            >
+          >
+        Update: Partial<
+          Pick<
+            TournamentCreatorPermission,
+            'status' | 'revoked_by' | 'revoked_at' | 'revoke_reason'
+          >
+        >
+        Relationships: []
+      }
       tournaments: {
         Row: Tournament
         Insert: Pick<
@@ -148,6 +188,12 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
+      can_create_tournament: {
+        Args: {
+          target_user_id?: string
+        }
+        Returns: boolean
+      }
       can_create_tournaments: {
         Args: {
           target_user_id?: string
@@ -162,6 +208,7 @@ export type Database = {
     Enums: {
       user_role: UserRole
       request_status: TournamentCreatorRequestStatus
+      creator_permission_status: CreatorPermissionStatus
       tournament_status: TournamentStatus
       tournament_registration_status: TournamentRegistrationStatus
     }

@@ -1,12 +1,17 @@
 import { supabase } from '../lib/supabase/client'
 import type {
   Profile,
+  TournamentCreatorPermission,
   TournamentCreatorRequest,
   TournamentCreatorRequestStatus,
 } from '../lib/supabase/types'
 
 export type CreatorRequestWithProfile = TournamentCreatorRequest & {
   requester?: Pick<Profile, 'id' | 'display_name' | 'email' | 'ra' | 'avatar_key'>
+}
+
+export type CreatorPermissionWithProfile = TournamentCreatorPermission & {
+  user?: Pick<Profile, 'id' | 'display_name' | 'email' | 'ra' | 'avatar_key'>
 }
 
 function getRequestError(message: string) {
@@ -66,6 +71,45 @@ export async function fetchAllCreatorRequests() {
   }))
 }
 
+export async function fetchMyCreatorPermissions(userId: string) {
+  const { data, error } = await supabase
+    .from('tournament_creator_permissions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(getRequestError(error.message))
+
+  return data
+}
+
+export async function fetchAllCreatorPermissions() {
+  const { data: permissions, error: permissionsError } = await supabase
+    .from('tournament_creator_permissions')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (permissionsError) throw new Error(getRequestError(permissionsError.message))
+
+  const userIds = Array.from(new Set(permissions.map((permission) => permission.user_id)))
+
+  if (userIds.length === 0) return []
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, display_name, email, ra, avatar_key')
+    .in('id', userIds)
+
+  if (profilesError) throw new Error(getRequestError(profilesError.message))
+
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]))
+
+  return permissions.map<CreatorPermissionWithProfile>((permission) => ({
+    ...permission,
+    user: profilesById.get(permission.user_id),
+  }))
+}
+
 export async function createCreatorRequest(userId: string, reason: string) {
   const { data, error } = await supabase
     .from('tournament_creator_requests')
@@ -106,6 +150,22 @@ export async function reviewCreatorRequest(
       admin_notes: adminNotes.trim() || null,
     })
     .eq('id', requestId)
+    .select('*')
+    .single()
+
+  if (error) throw new Error(getRequestError(error.message))
+
+  return data
+}
+
+export async function revokeCreatorPermission(permissionId: string, reason: string) {
+  const { data, error } = await supabase
+    .from('tournament_creator_permissions')
+    .update({
+      status: 'revoked',
+      revoke_reason: reason.trim() || null,
+    })
+    .eq('id', permissionId)
     .select('*')
     .single()
 

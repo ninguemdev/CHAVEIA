@@ -35,7 +35,7 @@ Observação: a tabela `auth.users` é gerenciada pelo Supabase. O projeto não 
 | role | enum | Sim | - | `admin` ou `user`. Usuários comuns não podem alterar este campo. |
 | ra | string | Opcional | - | Registro acadêmico informado pelo usuário. Não deve ser exposto publicamente por padrão. |
 | avatar_key | string | Sim | - | Chave de avatar pré-definido. Upload de foto não faz parte do MVP. |
-| can_create_tournaments | boolean derivado | Não persistido | Tournament | Permissão calculada por `public.can_create_tournaments()`: admin global ou usuário com pedido `approved`. |
+| can_create_tournaments | boolean derivado | Não persistido | Tournament | Permissão calculada por `public.can_create_tournament()`: admin global ou usuário com permissão `active` em `tournament_creator_permissions`. |
 | createdAt | timestamptz | Sim | - | Data de criação do perfil. |
 | updatedAt | timestamptz | Sim | - | Data da última atualização. |
 
@@ -51,6 +51,24 @@ Observação: a tabela `auth.users` é gerenciada pelo Supabase. O projeto não 
 | decisionReason | text | Opcional | - | Justificativa administrativa. |
 | createdAt | timestamptz | Sim | - | Data do pedido. |
 | decidedAt | timestamptz | Opcional | - | Data da decisão. |
+
+### TournamentCreatorPermission
+
+| Campo | Tipo sugerido | Obrigatório | Relações | Observações |
+| --- | --- | --- | --- | --- |
+| id | uuid | Sim | - | Permissão efetiva para criar torneios. |
+| userId | uuid | Sim | Profile | Usuário autorizado ou revogado. |
+| status | enum | Sim | - | active, revoked. Apenas `active` permite criar torneios. |
+| grantedBy | uuid | Sim | Profile | Admin que concedeu a permissão. |
+| grantedAt | timestamptz | Sim | - | Data da concessão. |
+| revokedBy | uuid | Opcional | Profile | Admin que revogou. |
+| revokedAt | timestamptz | Opcional | - | Data da revogação. |
+| grantReason | text | Opcional | TournamentCreatorRequest | Motivo administrativo ou motivo do pedido aprovado. |
+| revokeReason | text | Opcional | AuditLog | Motivo informado pelo admin ao revogar. |
+| createdAt | timestamptz | Sim | - | Data de criação do registro. |
+| updatedAt | timestamptz | Sim | - | Data da última atualização. |
+
+O pedido é histórico e não deve ser apagado. A permissão é a fonte de autorização revogável. Para preservar histórico, reativar um usuário deve criar uma nova permissão `active`, mantendo registros `revoked`.
 
 ### GlobalSettings
 
@@ -323,8 +341,9 @@ Observação: a tabela `auth.users` é gerenciada pelo Supabase. O projeto não 
 - `profiles.role` só pode ser alterado por admin ou processo seguro de seed/migração.
 - `profiles.avatar_key` deve aceitar apenas chaves cadastradas na lista de avatares permitidos.
 - Usuário comum só pode atualizar o próprio perfil e não pode mudar `role` nem conceder a si mesmo permissão de organizador.
-- Criação de torneio exige `role = admin` ou permissão derivada de pedido `approved` em `tournament_creator_requests`.
-- Usuário aprovado para criar torneios não vira admin global; a decisão deve ser consultada por função segura como `public.can_create_tournaments()`.
+- Criação de torneio exige `role = admin` ou permissão `active` em `tournament_creator_permissions`.
+- Usuário aprovado para criar torneios não vira admin global; a decisão deve ser consultada por função segura como `public.can_create_tournament()`.
+- Usuário comum não pode criar, atualizar, reativar nem revogar `tournament_creator_permissions`.
 - Alteração de torneio em andamento/encerrado exige admin ou regra explícita registrada.
 - Correção de resultado confirmado exige auditoria e permissão validada no banco.
 
@@ -335,6 +354,8 @@ Observação: a tabela `auth.users` é gerenciada pelo Supabase. O projeto não 
 - `Profile.userId`.
 - `Profile.role`.
 - `TournamentCreatorRequest.requesterId + status`.
+- `TournamentCreatorPermission.userId + status`.
+- Índice único parcial para permitir no máximo uma permissão `active` por usuário.
 - `Participant.tournamentId`.
 - `Registration.tournamentId + participantId`.
 - `Match.tournamentId + stageId + round`.
@@ -346,6 +367,7 @@ Observação: a tabela `auth.users` é gerenciada pelo Supabase. O projeto não 
 
 - Torneio: draft, registrations_open, registrations_closed, ongoing, finished, cancelled.
 - Pedido de criação de torneio: pending, approved, rejected, cancelled.
+- Permissão de criação de torneio: active, revoked.
 - Participante: pending, approved, checked_in, withdrawn, disqualified.
 - Inscrição: pending, approved, rejected, cancelled.
 - Partida: pending, scheduled, live, finished, cancelled, disputed.
@@ -361,6 +383,7 @@ Observação: a tabela `auth.users` é gerenciada pelo Supabase. O projeto não 
 - `SeedSource`: manual, ranking, draw.
 - `TieBreakerType`: points, wins, draws, losses, score_diff, score_for, head_to_head, buchholz, wo_count.
 - `CreatorRequestStatus`: pending, approved, rejected, cancelled.
+- `CreatorPermissionStatus`: active, revoked.
 - `ActionLockScope`: global, tournament, match, registration.
 
 ## RLS e policies mínimas
@@ -369,6 +392,7 @@ Todas as tabelas importantes devem ter RLS habilitado. Policies iniciais recomen
 
 - `profiles`: usuário autenticado lê perfis públicos necessários; atualiza apenas o próprio perfil; apenas admin altera `role`.
 - `tournament_creator_requests`: usuário cria e lê os próprios pedidos; admin lê todos e decide.
+- `tournament_creator_permissions`: usuário lê apenas a própria situação; admin lê todas, concede e revoga; nenhuma policy permite escrita por usuário comum.
 - `global_settings`: leitura conforme necessidade pública; escrita apenas para admin.
 - `tournaments`: visitantes leem torneios publicados; usuário autorizado cria/edita seus torneios em estados permitidos; admin lê e altera todos.
 - `registrations`: usuário cria/lê as próprias inscrições; usuários autorizados do torneio e admins administram inscrições.

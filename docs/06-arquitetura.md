@@ -164,7 +164,7 @@ Policies mínimas:
 - Admin lê e altera dados administrativos.
 - Usuário comum visualiza torneios públicos.
 - Usuário comum se inscreve em torneios abertos.
-- Usuário comum cria torneio apenas se tiver permissão aprovada.
+- Usuário comum cria torneio apenas se tiver permissão ativa em `tournament_creator_permissions`.
 - Admin pode alterar torneios em andamento ou encerrados com auditoria.
 
 ### Funções RPC

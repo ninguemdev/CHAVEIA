@@ -36,14 +36,22 @@
 
 - **Ator:** admin.
 - **Pré-condições:** pedido pendente.
-- **Passos:** abrir painel administrativo; revisar usuário e justificativa; aprovar ou rejeitar; registrar justificativa da decisão.
+- **Passos:** abrir painel administrativo; revisar usuário e justificativa; aprovar ou rejeitar; registrar justificativa da decisão; se aprovar, criar permissão `active` em `tournament_creator_permissions`.
 - **Erros possíveis:** pedido já decidido; admin sem sessão válida; erro de policy/RLS.
-- **Estado final:** pedido fica `approved` ou `rejected`; em aprovação, usuário recebe permissão para criar torneios.
+- **Estado final:** pedido fica `approved` ou `rejected`; em aprovação, o pedido permanece histórico e uma permissão ativa revogável passa a autorizar criação de torneios.
+
+## Admin revoga permissão de criar torneios
+
+- **Ator:** admin.
+- **Pré-condições:** usuário possui permissão `active` para criar torneios.
+- **Passos:** abrir painel administrativo; acessar permissões ativas; informar motivo opcional de revogação; confirmar revogação.
+- **Erros possíveis:** permissão inexistente; permissão já revogada; admin sem sessão válida; falha de RLS.
+- **Estado final:** permissão muda para `revoked`, o histórico fica preservado e o usuário não consegue criar novos torneios.
 
 ## Organizador cria torneio
 
-- **Ator:** admin ou usuário com permissão aprovada para criar torneios.
-- **Pré-condições:** usuário autenticado; `role = admin` ou `can_create_tournaments = true`.
+- **Ator:** admin ou usuário com permissão ativa para criar torneios.
+- **Pré-condições:** usuário autenticado; `role = admin` ou `can_create_tournament() = true`.
 - **Passos:** acessar dashboard; clicar em criar torneio; preencher nome, modalidade, datas e descrição; salvar rascunho.
 - **Erros possíveis:** campos obrigatórios ausentes; datas inválidas; nome duplicado no mesmo contexto; usuário sem permissão; operação bloqueada por RLS.
 - **Estado final:** torneio criado como rascunho.
