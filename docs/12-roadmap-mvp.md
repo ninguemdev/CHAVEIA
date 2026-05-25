@@ -119,3 +119,22 @@
 - **Tarefas:** convite por email, aceite do membro, transferência de capitania, substitutos e histórico detalhado de escalação.
 - **Critérios de aceite:** nenhum usuário entra em equipe sem consentimento quando o fluxo de convite for ativado.
 - **Riscos:** aumenta complexidade de notificações, prazos e auditoria.
+## Atualização: Fase 6 implementada parcialmente
+
+Entregue nesta etapa:
+
+- Algoritmo testável para próxima potência de 2, byes, sorteio, seeding, criação de rodadas e avanço.
+- Persistência em `tournament_brackets` e `bracket_matches`.
+- RLS para leitura pública e escrita apenas por admin/organizador.
+- RPC `complete_bracket_match` para validar placar e avançar vencedor.
+- UI `/torneios/:id/chave` com geração, regeração, byes, rodadas e confirmação de vencedor.
+
+Limitações mantidas para fases futuras:
+
+- Sem ranking.
+- Sem double elimination.
+- Sem round robin.
+- Sem grupos/playoffs.
+- Sem melhor de N estruturado em jogos internos.
+- Sem auditoria dedicada além dos campos `generated_by`, `generated_at`, vencedor e timestamps.
+- Correção de resultado já finalizado ainda deve ser tratada em fase de disputas/auditoria.

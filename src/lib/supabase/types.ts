@@ -44,6 +44,17 @@ export type TournamentRegistrationStatus =
   | 'checked_in'
   | 'registered'
 
+export type BracketSeedingMethod = 'draw' | 'seeded'
+
+export type BracketMatchStatus =
+  | 'pending'
+  | 'ready'
+  | 'bye'
+  | 'live'
+  | 'completed'
+  | 'disputed'
+  | 'cancelled'
+
 export type Profile = {
   id: string
   email: string | null
@@ -112,12 +123,47 @@ export type TournamentRegistration = {
   display_name: string
   status: TournamentRegistrationStatus
   registration_type: RegistrationType
+  seed: number | null
   captain_user_id: string | null
   admin_notes: string | null
   decided_by: string | null
   decided_at: string | null
   cancelled_by: string | null
   cancelled_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TournamentBracket = {
+  id: string
+  tournament_id: string
+  format: string
+  seeding_method: BracketSeedingMethod
+  size: number
+  rounds_count: number
+  status: string
+  winner_registration_id: string | null
+  generated_by: string | null
+  generated_at: string
+  created_at: string
+  updated_at: string
+}
+
+export type BracketMatch = {
+  id: string
+  bracket_id: string
+  tournament_id: string
+  round_number: number
+  match_number: number
+  status: BracketMatchStatus
+  participant_a_registration_id: string | null
+  participant_b_registration_id: string | null
+  winner_registration_id: string | null
+  score_a: number | null
+  score_b: number | null
+  next_match_id: string | null
+  next_match_slot: 'a' | 'b' | null
+  is_bye: boolean
   created_at: string
   updated_at: string
 }
@@ -281,7 +327,7 @@ export type Database = {
           Partial<
             Pick<
               TournamentRegistration,
-              'status' | 'registration_type' | 'captain_user_id' | 'team_id'
+              'status' | 'registration_type' | 'captain_user_id' | 'team_id' | 'seed'
             >
           >
         Update: Partial<
@@ -294,6 +340,71 @@ export type Database = {
             | 'decided_at'
             | 'cancelled_by'
             | 'cancelled_at'
+            | 'seed'
+          >
+        >
+        Relationships: []
+      }
+      tournament_brackets: {
+        Row: TournamentBracket
+        Insert: Pick<
+          TournamentBracket,
+          | 'tournament_id'
+          | 'format'
+          | 'seeding_method'
+          | 'size'
+          | 'rounds_count'
+          | 'generated_by'
+        > &
+          Partial<
+            Pick<
+              TournamentBracket,
+              'status' | 'winner_registration_id' | 'generated_at'
+            >
+          >
+        Update: Partial<
+          Pick<
+            TournamentBracket,
+            | 'status'
+            | 'winner_registration_id'
+            | 'generated_by'
+            | 'generated_at'
+          >
+        >
+        Relationships: []
+      }
+      bracket_matches: {
+        Row: BracketMatch
+        Insert: Pick<
+          BracketMatch,
+          'bracket_id' | 'tournament_id' | 'round_number' | 'match_number'
+        > &
+          Partial<
+            Pick<
+              BracketMatch,
+              | 'status'
+              | 'participant_a_registration_id'
+              | 'participant_b_registration_id'
+              | 'winner_registration_id'
+              | 'score_a'
+              | 'score_b'
+              | 'next_match_id'
+              | 'next_match_slot'
+              | 'is_bye'
+            >
+          >
+        Update: Partial<
+          Pick<
+            BracketMatch,
+            | 'status'
+            | 'participant_a_registration_id'
+            | 'participant_b_registration_id'
+            | 'winner_registration_id'
+            | 'score_a'
+            | 'score_b'
+            | 'next_match_id'
+            | 'next_match_slot'
+            | 'is_bye'
           >
         >
         Relationships: []
@@ -359,6 +470,15 @@ export type Database = {
         }
         Returns: TeamMemberWithProfile[]
       }
+      complete_bracket_match: {
+        Args: {
+          target_match_id: string
+          target_winner_registration_id: string
+          target_score_a: number
+          target_score_b: number
+        }
+        Returns: void
+      }
       is_admin: {
         Args: Record<string, never>
         Returns: boolean
@@ -377,6 +497,8 @@ export type Database = {
       tournament_status: TournamentStatus
       tournament_registration_status: TournamentRegistrationStatus
       registration_type: RegistrationType
+      bracket_seeding_method: BracketSeedingMethod
+      bracket_match_status: BracketMatchStatus
       team_status: TeamStatus
       team_member_role: TeamMemberRole
       team_member_status: TeamMemberStatus

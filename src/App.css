@@ -426,6 +426,33 @@ dd {
   background: var(--color-surface-muted);
 }
 
+.badge-match-ready,
+.badge-match-completed {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.badge-match-pending,
+.badge-match-bye {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+}
+
+.badge-match-live {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.badge-match-disputed {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.badge-match-cancelled {
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+}
+
 .badge-request-pending {
   color: var(--color-info);
   background: var(--color-info-soft);
@@ -1276,6 +1303,30 @@ tbody tr:hover {
 .registration-state p,
 .subtle-note {
   color: var(--color-text-muted);
+}
+
+.inline-field-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.compact-field {
+  min-width: 7rem;
+}
+
+.compact-field input {
+  max-width: 7rem;
+}
+
+.compact-score-form {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  align-items: end;
+}
+
+.compact-score-form .button {
+  min-height: 3rem;
 }
 
 @keyframes spin {

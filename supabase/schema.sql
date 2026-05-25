@@ -2526,3 +2526,425 @@ create policy "team_members_update_manager_or_captain"
 
 comment on policy "team_members_update_manager_or_captain" on public.team_members is
   'Capitão, admin ou organizador autorizado remove membros por status removed, preservando histórico.';
+
+-- ---------------------------------------------------------------------------
+-- Chave mata-mata simples
+-- ---------------------------------------------------------------------------
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    where typname = 'bracket_seeding_method'
+      and typnamespace = 'public'::regnamespace
+  ) then
+    create type public.bracket_seeding_method as enum (
+      'draw',
+      'seeded'
+    );
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    where typname = 'bracket_match_status'
+      and typnamespace = 'public'::regnamespace
+  ) then
+    create type public.bracket_match_status as enum (
+      'pending',
+      'ready',
+      'bye',
+      'live',
+      'completed',
+      'disputed',
+      'cancelled'
+    );
+  end if;
+end
+$$;
+
+alter table public.tournament_registrations
+  add column if not exists seed integer;
+
+comment on column public.tournament_registrations.seed is
+  'Semente opcional usada na geracao de chave mata-mata. Nulo entra no preenchimento restante.';
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'tournament_registrations_seed_positive'
+      and conrelid = 'public.tournament_registrations'::regclass
+  ) then
+    alter table public.tournament_registrations
+      add constraint tournament_registrations_seed_positive check (
+        seed is null
+        or seed > 0
+      );
+  end if;
+end
+$$;
+
+create unique index if not exists tournament_registrations_one_seed_per_tournament
+  on public.tournament_registrations (tournament_id, seed)
+  where seed is not null
+    and status in (
+      'pending'::public.tournament_registration_status,
+      'confirmed'::public.tournament_registration_status,
+      'checked_in'::public.tournament_registration_status
+    );
+
+create table if not exists public.tournament_brackets (
+  id uuid primary key default extensions.gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  format text not null default 'single_elimination',
+  seeding_method public.bracket_seeding_method not null,
+  size integer not null,
+  rounds_count integer not null,
+  status text not null default 'generated',
+  winner_registration_id uuid references public.tournament_registrations(id) on delete set null,
+  generated_by uuid references public.profiles(id) on delete set null,
+  generated_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint tournament_brackets_format_single_elimination check (format = 'single_elimination'),
+  constraint tournament_brackets_size_power check (
+    size >= 2
+    and (size & (size - 1)) = 0
+  ),
+  constraint tournament_brackets_rounds_positive check (rounds_count > 0),
+  constraint tournament_brackets_status_allowed check (
+    status in ('generated', 'published', 'archived')
+  )
+);
+
+comment on table public.tournament_brackets is
+  'Chave gerada de mata-mata simples. O sorteio/seeding fica persistido no banco.';
+comment on column public.tournament_brackets.seeding_method is
+  'Metodo usado na geracao: draw para sorteio salvo uma vez, seeded para distribuicao por seed.';
+comment on column public.tournament_brackets.winner_registration_id is
+  'Campeao definido quando a final e concluida.';
+
+create unique index if not exists tournament_brackets_one_per_tournament
+  on public.tournament_brackets (tournament_id);
+
+create index if not exists tournament_brackets_tournament_idx
+  on public.tournament_brackets (tournament_id);
+
+create table if not exists public.bracket_matches (
+  id uuid primary key default extensions.gen_random_uuid(),
+  bracket_id uuid not null references public.tournament_brackets(id) on delete cascade,
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  round_number integer not null,
+  match_number integer not null,
+  status public.bracket_match_status not null default 'pending',
+  participant_a_registration_id uuid references public.tournament_registrations(id) on delete set null,
+  participant_b_registration_id uuid references public.tournament_registrations(id) on delete set null,
+  winner_registration_id uuid references public.tournament_registrations(id) on delete set null,
+  score_a integer,
+  score_b integer,
+  next_match_id uuid references public.bracket_matches(id) on delete set null,
+  next_match_slot text,
+  is_bye boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint bracket_matches_round_positive check (round_number > 0),
+  constraint bracket_matches_match_positive check (match_number > 0),
+  constraint bracket_matches_next_slot_allowed check (
+    next_match_slot is null
+    or next_match_slot in ('a', 'b')
+  ),
+  constraint bracket_matches_scores_non_negative check (
+    (score_a is null or score_a >= 0)
+    and (score_b is null or score_b >= 0)
+  ),
+  constraint bracket_matches_bye_consistency check (
+    not is_bye
+    or status = 'bye'::public.bracket_match_status
+  )
+);
+
+comment on table public.bracket_matches is
+  'Partidas/nos da chave mata-mata. Cada partida sabe rodada, posicao e destino do vencedor.';
+comment on column public.bracket_matches.next_match_id is
+  'Proxima partida que recebe o vencedor desta partida.';
+comment on column public.bracket_matches.next_match_slot is
+  'Slot a ou b da proxima partida.';
+comment on column public.bracket_matches.is_bye is
+  'Indica partida estrutural de bye; nao representa confronto jogavel contra vazio.';
+
+create unique index if not exists bracket_matches_unique_round_position
+  on public.bracket_matches (bracket_id, round_number, match_number);
+
+create index if not exists bracket_matches_tournament_round_idx
+  on public.bracket_matches (tournament_id, round_number, match_number);
+
+create or replace function public.protect_bracket_match_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if current_setting('app.bracket_completion', true) = 'on' then
+    return new;
+  end if;
+
+  if new.participant_a_registration_id is distinct from old.participant_a_registration_id
+    or new.participant_b_registration_id is distinct from old.participant_b_registration_id
+    or new.winner_registration_id is distinct from old.winner_registration_id
+    or new.score_a is distinct from old.score_a
+    or new.score_b is distinct from old.score_b
+    or new.status is distinct from old.status
+    or new.is_bye is distinct from old.is_bye
+  then
+    raise exception 'Alteracoes de resultado e avanco da chave devem usar a RPC complete_bracket_match.';
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.complete_bracket_match(
+  target_match_id uuid,
+  target_winner_registration_id uuid,
+  target_score_a integer,
+  target_score_b integer
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_match public.bracket_matches%rowtype;
+begin
+  select *
+  into target_match
+  from public.bracket_matches
+  where id = target_match_id;
+
+  if target_match.id is null then
+    raise exception 'Partida da chave nao encontrada.';
+  end if;
+
+  if not public.can_manage_tournament(target_match.tournament_id) then
+    raise exception 'Usuario nao pode alterar esta chave.';
+  end if;
+
+  if target_match.status not in (
+    'ready'::public.bracket_match_status,
+    'live'::public.bracket_match_status
+  ) then
+    raise exception 'Somente partidas prontas ou ao vivo podem receber vencedor.';
+  end if;
+
+  if target_match.participant_a_registration_id is null
+    or target_match.participant_b_registration_id is null
+  then
+    raise exception 'Partida ainda nao possui dois participantes.';
+  end if;
+
+  if target_winner_registration_id not in (
+    target_match.participant_a_registration_id,
+    target_match.participant_b_registration_id
+  ) then
+    raise exception 'Vencedor nao pertence a esta partida.';
+  end if;
+
+  if target_score_a is null
+    or target_score_b is null
+    or target_score_a < 0
+    or target_score_b < 0
+    or target_score_a = target_score_b
+  then
+    raise exception 'Placar invalido para mata-mata simples.';
+  end if;
+
+  if target_winner_registration_id = target_match.participant_a_registration_id
+    and target_score_a <= target_score_b
+  then
+    raise exception 'Placar nao confirma o vencedor informado.';
+  end if;
+
+  if target_winner_registration_id = target_match.participant_b_registration_id
+    and target_score_b <= target_score_a
+  then
+    raise exception 'Placar nao confirma o vencedor informado.';
+  end if;
+
+  perform set_config('app.bracket_completion', 'on', true);
+
+  update public.bracket_matches
+  set status = 'completed'::public.bracket_match_status,
+      score_a = target_score_a,
+      score_b = target_score_b,
+      winner_registration_id = target_winner_registration_id,
+      updated_at = now()
+  where id = target_match.id;
+
+  if target_match.next_match_id is null then
+    update public.tournament_brackets
+    set winner_registration_id = target_winner_registration_id,
+        updated_at = now()
+    where id = target_match.bracket_id;
+  elsif target_match.next_match_slot = 'a' then
+    update public.bracket_matches
+    set participant_a_registration_id = target_winner_registration_id,
+        status = case
+          when participant_b_registration_id is not null then 'ready'::public.bracket_match_status
+          else status
+        end,
+        updated_at = now()
+    where id = target_match.next_match_id;
+  elsif target_match.next_match_slot = 'b' then
+    update public.bracket_matches
+    set participant_b_registration_id = target_winner_registration_id,
+        status = case
+          when participant_a_registration_id is not null then 'ready'::public.bracket_match_status
+          else status
+        end,
+        updated_at = now()
+    where id = target_match.next_match_id;
+  else
+    raise exception 'Destino do vencedor invalido.';
+  end if;
+
+  perform set_config('app.bracket_completion', 'off', true);
+end;
+$$;
+
+comment on function public.complete_bracket_match(uuid, uuid, integer, integer) is
+  'Confirma resultado de partida mata-mata, valida placar e avanca o vencedor para a proxima partida.';
+
+revoke all on function public.complete_bracket_match(uuid, uuid, integer, integer) from public;
+grant execute on function public.complete_bracket_match(uuid, uuid, integer, integer) to authenticated;
+
+drop trigger if exists tournament_brackets_set_updated_at on public.tournament_brackets;
+create trigger tournament_brackets_set_updated_at
+  before update on public.tournament_brackets
+  for each row
+  execute function public.set_updated_at();
+
+drop trigger if exists bracket_matches_set_updated_at on public.bracket_matches;
+create trigger bracket_matches_set_updated_at
+  before update on public.bracket_matches
+  for each row
+  execute function public.set_updated_at();
+
+drop trigger if exists bracket_matches_protect_update on public.bracket_matches;
+create trigger bracket_matches_protect_update
+  before update on public.bracket_matches
+  for each row
+  execute function public.protect_bracket_match_update();
+
+alter table public.tournament_brackets enable row level security;
+alter table public.bracket_matches enable row level security;
+
+grant select on public.tournament_brackets to anon;
+grant select on public.bracket_matches to anon;
+grant select, insert, update, delete on public.tournament_brackets to authenticated;
+grant select, insert, update, delete on public.bracket_matches to authenticated;
+
+drop policy if exists "brackets_select_public" on public.tournament_brackets;
+drop policy if exists "brackets_select_manager" on public.tournament_brackets;
+drop policy if exists "brackets_insert_manager" on public.tournament_brackets;
+drop policy if exists "brackets_update_manager" on public.tournament_brackets;
+drop policy if exists "brackets_delete_manager" on public.tournament_brackets;
+
+create policy "brackets_select_public"
+  on public.tournament_brackets
+  for select
+  to anon, authenticated
+  using (
+    exists (
+      select 1
+      from public.tournaments tournament
+      where tournament.id = tournament_id
+        and tournament.status <> 'draft'::public.tournament_status
+    )
+  );
+
+comment on policy "brackets_select_public" on public.tournament_brackets is
+  'Permite leitura publica da chave de torneios publicados.';
+
+create policy "brackets_select_manager"
+  on public.tournament_brackets
+  for select
+  to authenticated
+  using (public.can_manage_tournament(tournament_id));
+
+create policy "brackets_insert_manager"
+  on public.tournament_brackets
+  for insert
+  to authenticated
+  with check (
+    public.can_manage_tournament(tournament_id)
+    and generated_by = auth.uid()
+  );
+
+create policy "brackets_update_manager"
+  on public.tournament_brackets
+  for update
+  to authenticated
+  using (public.can_manage_tournament(tournament_id))
+  with check (public.can_manage_tournament(tournament_id));
+
+create policy "brackets_delete_manager"
+  on public.tournament_brackets
+  for delete
+  to authenticated
+  using (public.can_manage_tournament(tournament_id));
+
+drop policy if exists "bracket_matches_select_public" on public.bracket_matches;
+drop policy if exists "bracket_matches_select_manager" on public.bracket_matches;
+drop policy if exists "bracket_matches_insert_manager" on public.bracket_matches;
+drop policy if exists "bracket_matches_update_manager" on public.bracket_matches;
+drop policy if exists "bracket_matches_delete_manager" on public.bracket_matches;
+
+create policy "bracket_matches_select_public"
+  on public.bracket_matches
+  for select
+  to anon, authenticated
+  using (
+    exists (
+      select 1
+      from public.tournaments tournament
+      where tournament.id = tournament_id
+        and tournament.status <> 'draft'::public.tournament_status
+    )
+  );
+
+comment on policy "bracket_matches_select_public" on public.bracket_matches is
+  'Permite leitura publica das partidas da chave de torneios publicados.';
+
+create policy "bracket_matches_select_manager"
+  on public.bracket_matches
+  for select
+  to authenticated
+  using (public.can_manage_tournament(tournament_id));
+
+create policy "bracket_matches_insert_manager"
+  on public.bracket_matches
+  for insert
+  to authenticated
+  with check (public.can_manage_tournament(tournament_id));
+
+create policy "bracket_matches_update_manager"
+  on public.bracket_matches
+  for update
+  to authenticated
+  using (public.can_manage_tournament(tournament_id))
+  with check (public.can_manage_tournament(tournament_id));
+
+create policy "bracket_matches_delete_manager"
+  on public.bracket_matches
+  for delete
+  to authenticated
+  using (public.can_manage_tournament(tournament_id));

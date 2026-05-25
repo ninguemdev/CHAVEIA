@@ -260,3 +260,26 @@ Verificar:
 - Organizador com permissão revogada não consegue criar novos torneios nem gerir equipes de torneios sem autorização.
 - Aprovar inscrição de equipe muda `tournament_registrations.status` para `confirmed` e `teams.status` para `confirmed`.
 - Rejeitar ou cancelar inscrição de equipe sincroniza `teams.status` para `rejected` ou `cancelled` sem apagar histórico.
+## Atualização: testes manuais do mata-mata simples
+
+O projeto ainda não possui runner de testes unitários. Os algoritmos foram isolados em `src/lib/tournaments/singleElimination.ts` para permitir testes futuros com Vitest/Jest sem depender da UI.
+
+Casos mínimos para validar manualmente pela tela `/torneios/:id/chave`:
+
+- 3 participantes confirmados: chave de 4, 1 bye e final pendente/pronta conforme avanço.
+- 4 participantes confirmados: chave de 4, sem bye, semifinais e final.
+- 5 participantes confirmados: chave de 8, 3 byes avançando automaticamente.
+- 8 participantes confirmados: chave de 8 sem bye.
+- 9 participantes confirmados: chave de 16, 7 byes.
+- 16 participantes confirmados: chave completa sem bye.
+- Sorteio: gerar chave e recarregar página; participantes permanecem nas mesmas posições salvas.
+- Seeding: preencher seeds em participantes, gerar por `seeded` e verificar que participantes não duplicam.
+- Bye: verificar partida com `status = bye`, `is_bye = true` e vencedor alimentando rodada seguinte.
+- Vencedor: registrar placar sem empate em partida pronta; vencedor avança para `next_match_id`.
+
+Permissões:
+
+- Admin consegue gerar, regerar e avançar vencedor.
+- Organizador autorizado consegue agir apenas em torneio que administra.
+- Usuário comum e visitante só visualizam chave pública.
+- Chamada direta para alterar vencedor/placar em `bracket_matches` sem RPC deve falhar pelo trigger `protect_bracket_match_update`.

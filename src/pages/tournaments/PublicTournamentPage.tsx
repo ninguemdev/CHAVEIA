@@ -249,6 +249,9 @@ export function PublicTournamentPage({ tournamentId }: { tournamentId: string })
               <a className="button button-secondary" href={`#/torneios/${tournament.id}/participantes`}>
                 Ver participantes
               </a>
+              <a className="button button-secondary" href={`#/torneios/${tournament.id}/chave`}>
+                Ver chave
+              </a>
               {tournament.registration_type === 'team' && (
                 <a className="button button-secondary" href={`#/torneios/${tournament.id}/equipes`}>
                   Ver equipes

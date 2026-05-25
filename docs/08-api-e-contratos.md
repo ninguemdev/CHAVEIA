@@ -316,3 +316,34 @@ Quando Supabase for implementado:
 - **Validações:** equipe pública confirmada, usuário membro ou gestor.
 - **Erros possíveis:** `not_found`, `permission_denied`.
 - **Permissões:** público vê equipes confirmadas; membros, capitão, organizador e admin veem equipe própria/gerenciada.
+## Atualização: contratos reais de chave
+
+### Listar participantes elegíveis da chave
+
+- **Ação:** `fetchBracketParticipants`.
+- **Entrada:** `{ tournament }`.
+- **Saída:** inscrições confirmadas/check-in compatíveis com `registration_type`.
+- **Validações:** torneio individual usa inscrições individuais; torneio por equipe exige `team_id`.
+- **Permissões:** leitura segue RLS de inscrições públicas/gestão.
+
+### Gerar chave
+
+- **Ação:** `generateTournamentBracket`.
+- **Entrada:** `{ tournament, userId, seedingMethod: "draw" | "seeded", forceRegenerate }`.
+- **Saída:** `TournamentBracketWithMatches`.
+- **Validações:** formato `single_elimination`; ao menos dois participantes; status não pode ser `draft`, `finished` ou `cancelled`; chave existente exige `forceRegenerate`.
+- **Permissões:** RLS em `tournament_brackets` e `bracket_matches` exige `public.can_manage_tournament(tournament_id)`.
+
+### Confirmar resultado e avançar vencedor
+
+- **Ação/RPC:** `complete_bracket_match`.
+- **Entrada:** `{ target_match_id, target_winner_registration_id, target_score_a, target_score_b }`.
+- **Saída:** sem payload; atualiza partida, próxima partida e campeão quando for final.
+- **Validações:** gestor autorizado; partida `ready` ou `live`; dois participantes; vencedor pertence à partida; placares inteiros, não negativos e sem empate.
+- **Permissões:** apenas `authenticated` com `public.can_manage_tournament`; usuário comum é bloqueado pelo banco.
+
+### Regerar chave
+
+- **Ação:** `generateTournamentBracket` com `forceRegenerate = true`.
+- **Efeito:** remove `tournament_brackets` existente; `bracket_matches` cai por cascade; nova estrutura é salva.
+- **UX obrigatória:** confirmação clara antes da chamada, avisando perda/alteração de dados.

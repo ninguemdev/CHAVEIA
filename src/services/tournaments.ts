@@ -343,6 +343,22 @@ export async function updateTournamentRegistrationStatus(
   return data
 }
 
+export async function updateTournamentRegistrationSeed(
+  registrationId: string,
+  seed: number | null,
+) {
+  const { data, error } = await supabase
+    .from('tournament_registrations')
+    .update({ seed })
+    .eq('id', registrationId)
+    .select('*')
+    .single()
+
+  if (error) throw new Error(getTournamentError(error.message))
+
+  return data
+}
+
 export async function cancelTournamentRegistration(registrationId: string) {
   const { data, error } = await supabase
     .from('tournament_registrations')

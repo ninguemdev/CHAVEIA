@@ -512,3 +512,45 @@ Regras:
 - Um usuário não pode estar ativo em duas equipes do mesmo torneio.
 - Capitão não pode ser removido no MVP; transferência de capitania fica para versão futura.
 - Capitão, admin ou organizador autorizado gerencia membros enquanto as inscrições permitirem.
+## Atualização: chave mata-mata simples persistida
+
+### TournamentRegistration
+
+Campo adicionado:
+
+- `seed`: inteiro opcional, positivo, usado pelo método `seeded`. Seeds duplicados no mesmo torneio são bloqueados por índice parcial para inscrições ativas.
+
+### TournamentBracket
+
+- `id`: uuid.
+- `tournament_id`: FK para `tournaments`.
+- `format`: `single_elimination`.
+- `seeding_method`: `draw | seeded`.
+- `size`: tamanho da chave, sempre potência de 2.
+- `rounds_count`: quantidade de rodadas.
+- `status`: `generated | published | archived`.
+- `winner_registration_id`: inscrição campeã quando a final é concluída.
+- `generated_by` e `generated_at`: auditoria de geração.
+- `created_at` e `updated_at`: timestamps.
+
+Regra: há no máximo uma chave ativa por torneio no MVP. Regerar remove a chave anterior e suas partidas por cascade.
+
+### BracketMatch
+
+- `id`: uuid.
+- `bracket_id` e `tournament_id`: escopo da chave.
+- `round_number`: rodada.
+- `match_number`: posição na rodada.
+- `status`: `pending | ready | bye | live | completed | disputed | cancelled`.
+- `participant_a_registration_id` e `participant_b_registration_id`: slots da partida.
+- `winner_registration_id`: vencedor definido.
+- `score_a` e `score_b`: placar agregado simples.
+- `next_match_id` e `next_match_slot`: destino do vencedor.
+- `is_bye`: indica avanço automático sem confronto jogável.
+
+RLS:
+
+- Visitante e usuário autenticado leem chaves de torneios publicados.
+- Admin e organizador autorizado leem, geram, regeram e gerenciam chave do torneio.
+- Usuário comum não escreve em `tournament_brackets` nem `bracket_matches`.
+- Avanço sensível passa pela RPC `complete_bracket_match`, que valida placar e permissão no banco.

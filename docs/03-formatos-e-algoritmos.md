@@ -288,4 +288,23 @@ func detectarConflito(novaPartida, partidasExistentes, intervaloMinimo):
 
   retornar semConflito
 ```
+## Implementação MVP: `single_elimination`
 
+A geração real de mata-mata simples fica em `src/lib/tournaments/singleElimination.ts`, separada da UI. O fluxo implementado é:
+
+1. Filtrar participantes confirmados.
+2. Calcular a próxima potência de 2.
+3. Calcular byes.
+4. Distribuir posições por sorteio salvo ou por seeding.
+5. Criar partidas da primeira rodada.
+6. Criar rodadas futuras pendentes.
+7. Avançar automaticamente participantes com bye.
+8. Persistir chave e partidas no Supabase.
+
+Para seeding, a ordem base usa distribuição recursiva de sementes para separar favoritos. Para 8 posições, as sementes formam os confrontos `1 x 8`, `4 x 5`, `2 x 7` e `3 x 6` conforme a árvore gerada. Participantes sem seed ocupam posições restantes por sorteio no momento da geração.
+
+O sorteio puro embaralha participantes uma única vez no serviço de geração e salva as posições em `bracket_matches`; a chave não é recalculada em renderização.
+
+Byes são salvos como partidas com `status = bye` e `is_bye = true`. O vencedor dessa partida estrutural já é gravado em `winner_registration_id` e alimenta o próximo slot.
+
+O avanço de vencedor é feito pela RPC `complete_bracket_match`, que exige placar válido, vencedor pertencente à partida e permissão de admin/organizador.

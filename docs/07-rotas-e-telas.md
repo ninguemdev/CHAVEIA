@@ -77,3 +77,18 @@ As rotas abaixo são proposta inicial. A implementação pode começar sem rotea
 - Torneios individuais exibem botão de inscrição direta.
 - Torneios por equipe exibem chamada para criar ou acessar equipes.
 - Participantes públicos continuam derivados de inscrições `confirmed` ou `checked_in`.
+## Atualização: tela real de chave
+
+### `/torneios/:id/chave`
+
+- **Objetivo:** visualizar e gerenciar a chave `single_elimination`.
+- **Usuário principal:** visitante para leitura pública; admin/organizador para geração e avanço.
+- **Componentes:** formulário de método (`draw` ou `seeded`), resumo da chave, rodadas, partidas, badges de status, formulário de placar para gestores.
+- **Estados:** carregando, erro, chave inexistente, chave gerada, bye, partida pendente, partida pronta, partida finalizada, campeão definido.
+- **Acessibilidade:** botões reais, labels nos placares, mensagem de erro em `role="alert"`, foco visível herdado do tema e layout em lista por rodada no mobile.
+
+Integrações:
+
+- `/torneios` exibe ação "Chave" em cada card.
+- `/torneios/:id` exibe ação "Ver chave".
+- `/torneios/:id/participantes` permite gestor preencher seed básico por inscrição.

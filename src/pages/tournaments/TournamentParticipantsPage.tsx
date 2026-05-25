@@ -11,6 +11,7 @@ import {
   publicParticipantStatuses,
   registrationTypeLabels,
   tournamentRegistrationStatusLabels,
+  updateTournamentRegistrationSeed,
   updateTournamentRegistrationStatus,
   type TournamentWithCount,
 } from '../../services/tournaments'
@@ -50,6 +51,7 @@ export function TournamentParticipantsPage({
   const [tournament, setTournament] = useState<TournamentWithCount | null>(null)
   const [registrations, setRegistrations] = useState<TournamentRegistration[]>([])
   const [notesByRegistration, setNotesByRegistration] = useState<Record<string, string>>({})
+  const [seedsByRegistration, setSeedsByRegistration] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState('')
   const [error, setError] = useState('')
@@ -68,6 +70,12 @@ export function TournamentParticipantsPage({
         nextRegistrations.reduce<Record<string, string>>((notes, registration) => {
           notes[registration.id] = registration.admin_notes ?? ''
           return notes
+        }, {}),
+      )
+      setSeedsByRegistration(
+        nextRegistrations.reduce<Record<string, string>>((seeds, registration) => {
+          seeds[registration.id] = registration.seed?.toString() ?? ''
+          return seeds
         }, {}),
       )
     } catch (loadError) {
@@ -123,6 +131,34 @@ export function TournamentParticipantsPage({
         actionError instanceof Error
           ? actionError.message
           : 'Não foi possível atualizar a inscrição.',
+      )
+    } finally {
+      setIsSubmitting('')
+    }
+  }
+
+  async function handleSeedSave(registration: TournamentRegistration) {
+    const rawSeed = seedsByRegistration[registration.id]?.trim() ?? ''
+    const nextSeed = rawSeed === '' ? null : Number(rawSeed)
+
+    if (nextSeed !== null && (!Number.isInteger(nextSeed) || nextSeed < 1)) {
+      setError('Seed deve ser um número inteiro positivo.')
+      return
+    }
+
+    setIsSubmitting(`${registration.id}:seed`)
+    setError('')
+    setSuccess('')
+
+    try {
+      await updateTournamentRegistrationSeed(registration.id, nextSeed)
+      await loadParticipants()
+      setSuccess('Seed atualizado para geração de chave.')
+    } catch (seedError) {
+      setError(
+        seedError instanceof Error
+          ? seedError.message
+          : 'Não foi possível atualizar o seed.',
       )
     } finally {
       setIsSubmitting('')
@@ -201,6 +237,7 @@ export function TournamentParticipantsPage({
                     <th scope="col">Participante</th>
                     <th scope="col">Tipo</th>
                     <th scope="col">Status</th>
+                    {canManage && <th scope="col">Seed</th>}
                     <th scope="col">Inscrito em</th>
                     {canManage && <th scope="col">Gestão</th>}
                   </tr>
@@ -216,6 +253,37 @@ export function TournamentParticipantsPage({
                       <td>
                         <TournamentRegistrationStatusBadge status={registration.status} />
                       </td>
+                      {canManage && (
+                        <td>
+                          <div className="inline-field-action">
+                            <label className="field compact-field" htmlFor={`seed-${registration.id}`}>
+                              <span>Seed</span>
+                              <input
+                                id={`seed-${registration.id}`}
+                                type="number"
+                                min="1"
+                                value={seedsByRegistration[registration.id] ?? ''}
+                                onChange={(event) =>
+                                  setSeedsByRegistration((current) => ({
+                                    ...current,
+                                    [registration.id]: event.target.value,
+                                  }))
+                                }
+                              />
+                            </label>
+                            <button
+                              className="button button-ghost"
+                              type="button"
+                              disabled={isSubmitting !== ''}
+                              onClick={() => void handleSeedSave(registration)}
+                            >
+                              {isSubmitting === `${registration.id}:seed`
+                                ? 'Salvando...'
+                                : 'Salvar'}
+                            </button>
+                          </div>
+                        </td>
+                      )}
                       <td>{formatDateTime(registration.created_at)}</td>
                       {canManage && (
                         <td>

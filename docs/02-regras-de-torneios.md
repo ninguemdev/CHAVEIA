@@ -185,3 +185,19 @@ As regras devem reduzir incentivos para perder de propósito, manipular saldo ou
 - O envio da equipe cria uma inscrição `pending` com `registration_type = team` e `team_id`.
 - A aprovação, rejeição ou cancelamento da inscrição atualiza o status da equipe, preservando histórico.
 - Convite por email com aceite do convidado fica planejado para versão futura; no MVP o capitão adiciona usuários existentes por email ou RA exato.
+## Atualização: mata-mata simples no MVP
+
+- O formato competitivo implementado nesta etapa é `single_elimination`.
+- A chave usa apenas inscrições confirmadas ou com check-in (`confirmed` e `checked_in`; `registered` permanece como compatibilidade legada).
+- Em torneio individual, cada inscrição confirmada representa um participante.
+- Em torneio por equipe, cada inscrição confirmada com `team_id` representa uma equipe válida.
+- Admin global pode gerar, regerar e gerenciar qualquer chave.
+- Organizador autorizado pode gerar, regerar e gerenciar apenas torneios que administra.
+- Usuário comum pode visualizar chave de torneio público, mas não pode gerar chave nem avançar vencedor.
+- A chave não pode ser gerada com menos de dois participantes.
+- Se já existir chave, a interface exige confirmação clara antes de regerar, pois resultados e avanços podem ser perdidos.
+- O sorteio ocorre somente no momento da geração e fica salvo no banco.
+- Byes são partidas estruturais com `status = bye`; não há confronto jogável contra participante vazio.
+- Participante com bye avança automaticamente para a próxima rodada.
+- Resultado de partida pronta exige placar inteiro, não negativo, sem empate e vencedor coerente com o placar.
+- A final concluída define `winner_registration_id` na chave.

@@ -257,3 +257,28 @@
 - **Passos:** abrir detalhes da equipe; visualizar membros, capitão e status.
 - **Erros possíveis:** usuário removido; equipe não encontrada; RLS nega leitura.
 - **Estado final:** membro visualiza a equipe, mas não consegue editar se não for capitão/gestor.
+## Atualização: geração e avanço de chave
+
+### Organizador gera chave mata-mata
+
+- **Ator:** admin ou organizador autorizado.
+- **Pré-condições:** torneio `single_elimination`, ao menos duas inscrições confirmadas ou com check-in, permissão validada por `can_manage_tournament`.
+- **Passos:** abrir `/torneios/:id/chave`; escolher sorteio ou seeding; confirmar geração; sistema salva `tournament_brackets` e `bracket_matches`.
+- **Erros possíveis:** participantes insuficientes; torneio em status inválido; chave já existente sem confirmação de regeração; RLS negando permissão.
+- **Estado final:** chave persistida com método, byes e destinos de avanço.
+
+### Participante visualiza chave
+
+- **Ator:** visitante ou usuário autenticado.
+- **Pré-condições:** torneio publicado.
+- **Passos:** abrir página pública ou rota de chave; consultar rodadas, partidas, byes e status.
+- **Erros possíveis:** torneio em rascunho; chave ainda não gerada.
+- **Estado final:** usuário visualiza apenas dados públicos da chave.
+
+### Organizador confirma vencedor
+
+- **Ator:** admin ou organizador autorizado.
+- **Pré-condições:** partida com dois participantes e `status = ready` ou `live`.
+- **Passos:** informar placar; sistema valida que não há empate; determina vencedor coerente com o placar; RPC avança vencedor para `next_match_id`.
+- **Erros possíveis:** placar inválido; vencedor fora da partida; partida pendente ou bye; ator sem permissão.
+- **Estado final:** partida fica `completed`; próxima partida recebe participante; final define campeão da chave.
