@@ -26,6 +26,9 @@ export function AuthLayout({
               <span className="brand-subtitle">Organização acadêmica</span>
             </span>
           </a>
+          <a className="auth-home-link" href="#home">
+            Voltar para a home
+          </a>
           <div className="auth-copy">
             <span className="eyebrow">{eyebrow}</span>
             <h1 id="auth-title">{title}</h1>

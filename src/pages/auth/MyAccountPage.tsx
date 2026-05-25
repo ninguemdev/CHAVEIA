@@ -8,12 +8,12 @@ export function MyAccountPage() {
 
   if (!profile) {
     return (
-      <main className="app-main">
+      <AuthenticatedShell subtitle="Minha conta">
         <div className="error-state" role="alert">
           <strong>Perfil indisponível</strong>
           <span>{profileError || 'Não foi possível carregar seu profile.'}</span>
         </div>
-      </main>
+      </AuthenticatedShell>
     )
   }
 

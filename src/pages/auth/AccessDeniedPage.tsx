@@ -1,3 +1,5 @@
+import { AuthenticatedShell } from '../../components/layout/AuthenticatedShell'
+
 type AccessDeniedPageProps = {
   title?: string
   description?: string
@@ -12,7 +14,7 @@ export function AccessDeniedPage({
   actionLabel = 'Voltar ao início',
 }: AccessDeniedPageProps) {
   return (
-    <main className="app-main">
+    <AuthenticatedShell subtitle="Acesso">
       <section className="empty-state access-denied" aria-labelledby="access-denied-title">
         <span className="empty-state-mark" aria-hidden="true">
           !
@@ -23,6 +25,6 @@ export function AccessDeniedPage({
           {actionLabel}
         </a>
       </section>
-    </main>
+    </AuthenticatedShell>
   )
 }

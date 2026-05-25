@@ -74,6 +74,20 @@ Sombras devem ser discretas:
 
 ## Componentes
 
+### SiteHeader
+
+- Header global renderizado por `AuthenticatedShell` nas paginas principais.
+- Usa links reais para navegacao e botao real apenas para abrir/fechar o menu mobile.
+- Links mudam conforme estado do usuario: visitante, usuario autenticado, criador autorizado e admin.
+- O menu mobile deve fechar ao navegar ou pressionar Escape.
+
+### PageBackButton
+
+- Botao reutilizavel exibido no topo das paginas internas.
+- Texto visivel: "Voltar"; o icone e complementar.
+- Usa `history.back()` quando possivel e fallback para rota segura.
+- A home nao usa este componente.
+
 ### Button
 
 - Variantes: primary, secondary, ghost, danger.
@@ -171,4 +185,3 @@ Sombras devem ser discretas:
 - Respeitar `prefers-reduced-motion`.
 - Hover e active devem comunicar clicabilidade.
 - Focus-visible deve ser sempre claro.
-

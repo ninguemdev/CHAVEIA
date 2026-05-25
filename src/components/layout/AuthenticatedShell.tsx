@@ -1,30 +1,28 @@
 import type { ReactNode } from 'react'
-import { UserMenu } from '../auth/UserMenu'
+import { PageLayout } from './PageLayout'
+import { SiteHeader } from './SiteHeader'
 
 type AuthenticatedShellProps = {
   subtitle: string
   children: ReactNode
+  showBackButton?: boolean
+  backTo?: string
 }
 
 export function AuthenticatedShell({
   subtitle,
   children,
+  showBackButton = true,
+  backTo,
 }: AuthenticatedShellProps) {
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <a className="brand" href="#home">
-          <span className="brand-mark" aria-hidden="true">
-            UT
-          </span>
-          <span>
-            <span className="brand-title">UTFPR Torneios</span>
-            <span className="brand-subtitle">{subtitle}</span>
-          </span>
-        </a>
-        <UserMenu />
-      </header>
-      <main className="app-main">{children}</main>
+      <SiteHeader subtitle={subtitle} />
+      <main className="app-main">
+        <PageLayout showBackButton={showBackButton} backTo={backTo}>
+          {children}
+        </PageLayout>
+      </main>
     </div>
   )
 }

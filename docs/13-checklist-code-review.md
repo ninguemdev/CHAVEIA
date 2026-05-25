@@ -110,3 +110,8 @@ O arquivo `code_review.md` ainda não está presente no repositório. Este check
 - Funções de domínio têm testes.
 - Documentação é atualizada junto da mudança.
 - Mudanças grandes são divididas em etapas revisáveis.
+## Atualizacao: navegacao
+
+- Paginas principais usam `AuthenticatedShell`/`SiteHeader`, sem header duplicado por tela.
+- Paginas internas exibem botao "Voltar"; home nao exibe.
+- Paginas de login/cadastro mantem caminho claro para home.

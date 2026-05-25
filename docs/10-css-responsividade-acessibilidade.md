@@ -157,4 +157,11 @@ Todo elemento interativo deve ter `:focus-visible`:
 - Estados vazio, loading, erro e sucesso estão previstos.
 - `prefers-reduced-motion` é respeitado.
 - Não há `!important` sem justificativa.
+## Atualizacao: navegacao global
+
+- Header global visivel nas paginas principais.
+- Menu mobile do header operavel por mouse e teclado.
+- Botao "Voltar" antes do `h1` nas paginas internas, exceto home.
+- Paginas de autenticacao com layout simplificado mantem link para home.
+- O botao "Voltar" tenta usar historico do navegador e cai em rota segura quando necessario.
 

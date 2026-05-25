@@ -93,6 +93,15 @@ Integrações:
 - `/torneios/:id` exibe ação "Ver chave".
 - `/torneios/:id/participantes` permite gestor preencher seed básico por inscrição.
 
+## Atualizacao: layout e navegacao global
+
+- As paginas internas usam `AuthenticatedShell`, que renderiza o `SiteHeader` compartilhado e o `PageBackButton`.
+- A home nao exibe botao de voltar porque e o ponto inicial do fluxo.
+- Paginas internas exibem "Voltar" antes do conteudo principal. O botao tenta `history.back()` e usa fallback seguro para `#/torneios` quando nao ha historico confiavel.
+- Paginas de autenticacao mantem `AuthLayout` simplificado para foco no formulario, mas exibem link claro para voltar a home.
+- O header aparece nas paginas principais: dashboard, torneios, criar/editar torneio, pagina publica do torneio, participantes, equipes, chave, minha conta, admin e pedidos.
+- Os links do header se adaptam ao usuario deslogado, usuario comum, criador autorizado e admin.
+
 ## Atualizacao: tela de chave e resultados
 
 `/torneios/:id/chave` passa a concentrar:

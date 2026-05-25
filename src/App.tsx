@@ -29,7 +29,8 @@ import {
 } from './data/mockData'
 import { AdminRoute } from './components/auth/AdminRoute'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
-import { UserMenu } from './components/auth/UserMenu'
+import { PageBackButton } from './components/layout/PageBackButton'
+import { SiteHeader } from './components/layout/SiteHeader'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/auth'
 import { AccessDeniedPage } from './pages/auth/AccessDeniedPage'
@@ -67,17 +68,22 @@ type TournamentView = 'cards' | 'table'
 type PublicTab = 'overview' | 'participants' | 'rules'
 type GroupTab = 'group-a' | 'group-b'
 
-const navigation: Array<{ id: PageId; label: string }> = [
-  { id: 'home', label: 'Início' },
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'tournaments', label: 'Torneios' },
-  { id: 'create', label: 'Criar torneio' },
-  { id: 'public', label: 'Página pública' },
-  { id: 'bracket', label: 'Chave' },
-  { id: 'groups', label: 'Grupos' },
-  { id: 'matches', label: 'Partidas' },
-  { id: 'result', label: 'Resultado' },
-]
+const demoPages = new Set<PageId>([
+  'home',
+  'dashboard',
+  'create',
+  'public',
+  'bracket',
+  'groups',
+  'matches',
+  'result',
+  'empty',
+])
+
+function getDemoPageFromRoute(route: string): PageId {
+  const cleanedRoute = route.replace(/^\//, '') as PageId
+  return demoPages.has(cleanedRoute) ? cleanedRoute : 'home'
+}
 
 const tournamentStatusText: Record<TournamentStatus, string> = {
   registration_open: 'Inscrição aberta',
@@ -229,14 +235,13 @@ function AppRouter() {
     case '/acesso-negado':
       return <AccessDeniedPage />
     default:
-      return <TournamentDemoApp />
+      return <TournamentDemoApp route={normalizedRoute} />
   }
 }
 
-function TournamentDemoApp() {
+function TournamentDemoApp({ route }: { route: string }) {
   const { session, canCreateTournaments } = useAuth()
-  const [activePage, setActivePage] = useState<PageId>('home')
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [activePage, setActivePage] = useState<PageId>(() => getDemoPageFromRoute(route))
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<TournamentStatus | 'all'>('all')
   const [tournamentView, setTournamentView] = useState<TournamentView>('cards')
@@ -271,11 +276,12 @@ function TournamentDemoApp() {
   }, [toast])
 
   useEffect(() => {
+    setActivePage(getDemoPageFromRoute(route))
+  }, [route])
+
+  useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsMobileMenuOpen(false)
-        setIsModalOpen(false)
-      }
+      if (event.key === 'Escape') setIsModalOpen(false)
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -285,30 +291,26 @@ function TournamentDemoApp() {
   function navigateTo(page: PageId) {
     if (page === 'tournaments') {
       window.location.hash = '#/torneios'
-      setIsMobileMenuOpen(false)
       return
     }
 
     if (page === 'create' && !canCreateTournaments) {
       window.location.hash = session ? '#/solicitar-criacao-torneio' : '#/login'
-      setIsMobileMenuOpen(false)
       return
     }
 
     if (page === 'create') {
       window.location.hash = '#/torneios/novo'
-      setIsMobileMenuOpen(false)
       return
     }
 
     if (page === 'public') {
       window.location.hash = '#/torneios'
-      setIsMobileMenuOpen(false)
       return
     }
 
+    window.location.hash = `#${page}`
     setActivePage(page)
-    setIsMobileMenuOpen(false)
   }
 
   function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
@@ -406,63 +408,11 @@ function TournamentDemoApp() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <a
-          className="brand"
-          href="#home"
-          onClick={(event) => {
-            event.preventDefault()
-            navigateTo('home')
-          }}
-        >
-          <span className="brand-mark" aria-hidden="true">UT</span>
-          <span>
-            <span className="brand-title">UTFPR Torneios</span>
-            <span className="brand-subtitle">Organização acadêmica</span>
-          </span>
-        </a>
-
-        <button
-          className="nav-toggle"
-          type="button"
-          aria-controls="primary-navigation"
-          aria-expanded={isMobileMenuOpen}
-          onClick={() => setIsMobileMenuOpen((current) => !current)}
-        >
-          Menu
-        </button>
-
-        <nav
-          className={isMobileMenuOpen ? 'primary-nav is-open' : 'primary-nav'}
-          id="primary-navigation"
-          aria-label="Navegação principal"
-        >
-          {navigation.map((item) => (
-            <a
-              key={item.id}
-              href={`#${item.id}`}
-              aria-current={activePage === item.id ? 'page' : undefined}
-              onClick={(event) => {
-                event.preventDefault()
-                navigateTo(item.id)
-              }}
-            >
-              {item.label}
-            </a>
-          ))}
-          <button
-            className="button button-primary nav-action"
-            type="button"
-            onClick={() => navigateTo('create')}
-          >
-            Novo torneio
-          </button>
-        </nav>
-
-        <UserMenu />
-      </header>
-
-      <main className="app-main">{renderPage()}</main>
+      <SiteHeader />
+      <main className="app-main">
+        {activePage !== 'home' && <PageBackButton fallbackHref="#home" />}
+        {renderPage()}
+      </main>
 
       <Toast message={toast} />
 
