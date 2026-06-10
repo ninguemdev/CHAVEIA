@@ -10,7 +10,7 @@ O objetivo é oferecer uma plataforma clara, responsiva e acessível para organi
 - React
 - TypeScript
 - CSS próprio
-- Supabase recomendado para autenticação, PostgreSQL e Row Level Security
+- Supabase, PostgreSQL e Row Level Security
 - ESLint
 - npm
 
