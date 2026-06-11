@@ -9,21 +9,21 @@ export type AvatarOption = {
 
 export const avatarOptions: AvatarOption[] = [
   {
-    key: 'avatar_utfpr_blue',
-    label: 'UTFPR azul',
-    initials: 'UT',
+    key: 'avatar_arcade_blue',
+    label: 'Arcade azul',
+    initials: 'P1',
     tone: 'blue',
   },
   {
-    key: 'avatar_utfpr_green',
-    label: 'UTFPR verde',
-    initials: 'PR',
+    key: 'avatar_arcade_green',
+    label: 'Arcade verde',
+    initials: 'P2',
     tone: 'green',
   },
   {
-    key: 'avatar_utfpr_gold',
-    label: 'Destaque acadêmico',
-    initials: 'DA',
+    key: 'avatar_arcade_gold',
+    label: 'Arcade dourado',
+    initials: 'GG',
     tone: 'gold',
   },
   {
@@ -34,8 +34,8 @@ export const avatarOptions: AvatarOption[] = [
   },
   {
     key: 'avatar_academic',
-    label: 'Acadêmico',
-    initials: 'AC',
+    label: 'Clássico',
+    initials: 'OG',
     tone: 'gray',
   },
 ]

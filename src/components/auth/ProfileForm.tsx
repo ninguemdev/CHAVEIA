@@ -93,11 +93,10 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       </label>
 
       <label className="field" htmlFor="profile-ra">
-        <span>RA</span>
+        <span>Matricula ou apelido (opcional)</span>
         <input
           id="profile-ra"
           type="text"
-          inputMode="numeric"
           value={ra}
           onChange={(event) => setRa(event.target.value)}
         />

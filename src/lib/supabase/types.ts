@@ -9,9 +9,9 @@ export type Json =
   | Json[]
 
 export type AvatarKey =
-  | 'avatar_utfpr_blue'
-  | 'avatar_utfpr_green'
-  | 'avatar_utfpr_gold'
+  | 'avatar_arcade_blue'
+  | 'avatar_arcade_green'
+  | 'avatar_arcade_gold'
   | 'avatar_competition'
   | 'avatar_academic'
 

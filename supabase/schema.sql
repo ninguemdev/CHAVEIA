@@ -1,4 +1,4 @@
--- UTFPR Torneios - schema inicial Supabase
+-- Chaveia - schema inicial Supabase
 -- Objetivo:
 -- - Usar Supabase Auth como origem dos usuários.
 -- - Não criar tabela de senhas.
@@ -130,18 +130,18 @@ $$;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
-  display_name text not null default 'Usuário UTFPR',
+  display_name text not null default 'Usuário',
   ra text,
-  avatar_key text not null default 'avatar_utfpr_blue',
+  avatar_key text not null default 'avatar_arcade_blue',
   role public.user_role not null default 'user',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint profiles_display_name_not_blank check (length(btrim(display_name)) > 0),
   constraint profiles_avatar_key_allowed check (
     avatar_key in (
-      'avatar_utfpr_blue',
-      'avatar_utfpr_green',
-      'avatar_utfpr_gold',
+      'avatar_arcade_blue',
+      'avatar_arcade_green',
+      'avatar_arcade_gold',
       'avatar_competition',
       'avatar_academic'
     )
@@ -157,7 +157,7 @@ comment on column public.profiles.email is
 comment on column public.profiles.ra is
   'Registro acadêmico. Dado pessoal, não deve ser exposto publicamente sem necessidade.';
 comment on column public.profiles.avatar_key is
-  'Avatar pré-definido do MVP. Upload de foto não faz parte do escopo inicial.';
+  'Avatar pré-definido. Chaves: avatar_arcade_blue, avatar_arcade_green, avatar_arcade_gold, avatar_competition, avatar_academic.';
 comment on column public.profiles.role is
   'Papel global. Usuário comum nunca pode promover a si mesmo para admin.';
 
@@ -431,19 +431,19 @@ begin
     coalesce(
       nullif(new.raw_user_meta_data ->> 'display_name', ''),
       nullif(split_part(new.email, '@', 1), ''),
-      'Usuário UTFPR'
+      'Usuário'
     ),
     nullif(new.raw_user_meta_data ->> 'ra', ''),
     case
       when requested_avatar in (
-        'avatar_utfpr_blue',
-        'avatar_utfpr_green',
-        'avatar_utfpr_gold',
+        'avatar_arcade_blue',
+        'avatar_arcade_green',
+        'avatar_arcade_gold',
         'avatar_competition',
         'avatar_academic'
       )
       then requested_avatar
-      else 'avatar_utfpr_blue'
+      else 'avatar_arcade_blue'
     end,
     'user'
   )
