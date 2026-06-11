@@ -11,7 +11,7 @@
 
 - **Objetivo:** substituir template inicial por estrutura real do sistema.
 - **Tarefas:** layout base; navegação; landing; dashboard mockado; tokens CSS.
-- **Critérios de aceite:** interface responsiva, acessível e coerente com identidade UTFPR.
+- **Critérios de aceite:** interface responsiva, acessível e coerente com identidade Chaveia.
 - **Riscos:** excesso de telas sem domínio pode gerar retrabalho.
 
 ## Fase 2 - Autenticação, perfis e Supabase

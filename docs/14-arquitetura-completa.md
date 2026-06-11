@@ -1,4 +1,4 @@
-# UTFPR Torneios - arquitetura completa do projeto
+# Chaveia - arquitetura completa do projeto
 
 Este documento descreve a estrutura real do projeto no estado atual do
 repositorio. Ele complementa os documentos existentes em `docs/` e registra
@@ -12,7 +12,7 @@ atual, este documento deve deixar essa diferenca explicita.
 
 ## 1. Visao geral
 
-O projeto e um sistema web academico da UTFPR para criacao, gestao e
+O projeto e um sistema web academico da a plataforma para criacao, gestao e
 publicacao de torneios. A aplicacao combina:
 
 - Front-end em Vite, React e TypeScript.
@@ -1378,7 +1378,7 @@ proprio e link de retorno para home.
 
 Responsavel por:
 
-- marca "UTFPR Torneios";
+- marca "Chaveia";
 - subtitulo contextual;
 - navegacao principal;
 - menu mobile;
@@ -2391,7 +2391,7 @@ Desclassificacao fica na inscricao por campos derivados:
 
 Usuario comum nao executa desclassificacao. Admin/organizador deve informar justificativa. Novas chaves ignoram participantes desclassificados. Se a chave ja existir, a resolucao recomendada e registrar W.O. do adversario ou usar `action_locks` para bloquear a operacao ate decisao manual.
 
-## Atualizacao visual: design system UTFPR
+## Atualizacao visual: design system a plataforma
 
 ### Escopo da mudanca
 
@@ -2400,7 +2400,7 @@ RLS, schema Supabase, services, algoritmos ou regras de negocio.
 
 `src/index.css` concentra tokens e base global:
 
-- paleta institucional UTFPR com `--color-brand-black`, `--color-brand-black-2`,
+- paleta institucional a plataforma com `--color-brand-black`, `--color-brand-black-2`,
   `--color-brand-yellow`, `--color-brand-yellow-2` e
   `--color-brand-yellow-soft`;
 - neutros de fundo, superficie, texto e borda;
@@ -2419,7 +2419,7 @@ RLS, schema Supabase, services, algoritmos ou regras de negocio.
 
 ### Regras de identidade
 
-- Amarelo UTFPR e usado para CTA principal, foco, destaque de vencedor, detalhe de card e sinais de marca.
+- Laranja Chaveia e usado para CTA principal, foco, destaque de vencedor, detalhe de card e sinais de marca.
 - Preto/grafite e usado para marca, contraste institucional, texto forte e placares destacados.
 - Fundos permanecem claros/off-white para leitura.
 - Verde, vermelho, azul e aviso ficam restritos a estados funcionais.

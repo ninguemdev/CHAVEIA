@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Este projeto é um sistema web acadêmico da UTFPR para organização de torneios, e-sports e competições gerais.
+Este projeto é a plataforma Chaveia para organização de torneios, e-sports e competições gerais.
 
 ## Stack
 
@@ -25,7 +25,7 @@ npm install
 
 ## Projeto
 
-Este projeto é um sistema web acadêmico da UTFPR para organização de torneios.
+Este projeto é a plataforma Chaveia para organização de torneios.
 
 Sempre siga estas regras:
 
@@ -61,7 +61,7 @@ Criar uma plataforma completa para torneios, com foco em:
   - `admin`: administrador global do site.
   - `user`: usuário comum autenticado.
 - Admins podem alterar configurações globais, alterar torneios em andamento ou encerrados, aprovar/rejeitar pedidos, editar resultados, resolver disputas, visualizar dados administrativos e bloquear/desbloquear ações quando necessário.
-- Usuários comuns podem criar conta, fazer login, editar o próprio perfil, escolher avatar pré-definido via `avatar_key`, informar RA, visualizar torneios públicos, inscrever-se em torneios e pedir permissão para criar torneios.
+- Usuários comuns podem criar conta, fazer login, editar o próprio perfil, escolher avatar pré-definido via `avatar_key`, informar matrícula/apelido, visualizar torneios públicos, inscrever-se em torneios e pedir permissão para criar torneios.
 - Usuários comuns não podem alterar dados de outros usuários, configurações globais ou torneios sem autorização.
 - Permissão para criar/gerenciar torneios deve ser tratada como autorização explícita, aprovada por admin e registrada em banco/auditoria.
 - Pedido de permissão e permissão ativa são conceitos diferentes: pedidos ficam como histórico; a permissão ativa deve ser revogável e validada por RLS/funções SQL.

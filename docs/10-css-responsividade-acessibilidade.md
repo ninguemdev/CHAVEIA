@@ -184,7 +184,7 @@ Todo elemento interativo deve mostrar foco:
 
 ### Botoes
 
-- `button-primary`: CTA principal, amarelo UTFPR.
+- `button-primary`: CTA principal, amarelo a plataforma.
 - `button-secondary`: acao secundaria, superficie clara.
 - `button-ghost`: acao auxiliar.
 - `button-danger`: acao destrutiva.
@@ -233,7 +233,7 @@ Todo elemento interativo deve mostrar foco:
 - Textos nao se sobrepoem.
 - `prefers-reduced-motion` e respeitado.
 - Nao ha `!important` sem justificativa.
-- A identidade visual usa amarelo/preto da UTFPR sem excesso.
+- A identidade visual usa laranja/preto da Chaveia sem excesso.
 
 ## Atualizacao: navegacao global
 

@@ -116,9 +116,9 @@ O arquivo `code_review.md` ainda não está presente no repositório. Este check
 - Paginas internas exibem botao "Voltar"; home nao exibe.
 - Paginas de login/cadastro mantem caminho claro para home.
 
-## Atualizacao: identidade visual UTFPR
+## Atualizacao: identidade visual a plataforma
 
-- Tokens globais de `src/index.css` usam grafite/preto e amarelo UTFPR como base.
+- Tokens globais de `src/index.css` usam grafite/preto e amarelo a plataforma como base.
 - `button-primary` usa amarelo com texto grafite e deve aparecer apenas para CTA principal.
 - Header, hero, auth e public cover carregam a identidade institucional sem deixar a UI escura demais.
 - Cards usam superficie clara, borda neutra, sombra leve e detalhe amarelo sutil.

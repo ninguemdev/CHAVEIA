@@ -1,14 +1,14 @@
-# UTFPR Torneios
+# Chaveia
 
-Sistema web para organização de torneios, e-sports e competições acadêmicas no contexto da UTFPR.
+Plataforma web para organização de torneios e e-sports. Monta o time. Chaveia o torneio.
 
 ---
 
 ## O problema que este projeto resolve
 
-Competições universitárias costumam depender de planilhas Excel compartilhadas, grupos de WhatsApp e controles manuais para inscrições, sorteios, chaves, resultados e ranking. O resultado é previsível: erros de atualização, auditoria impossível, comunicação fragmentada e falta de transparência para os participantes.
+Competições costumam depender de planilhas Excel compartilhadas, grupos de WhatsApp e controles manuais para inscrições, sorteios, chaves, resultados e ranking. O resultado é previsível: erros de atualização, auditoria impossível, comunicação fragmentada e falta de transparência para os participantes.
 
-O UTFPR Torneios centraliza todo esse processo em uma plataforma única — com regras explícitas, segurança garantida no banco, auditoria de cada ação sensível e página pública para que qualquer um acompanhe o torneio em tempo real.
+A Chaveia centraliza todo esse processo em uma plataforma única — com regras explícitas, segurança garantida no banco, auditoria de cada ação sensível e página pública para que qualquer um acompanhe o torneio em tempo real.
 
 ---
 
@@ -17,7 +17,8 @@ O UTFPR Torneios centraliza todo esse processo em uma plataforma única — com 
 | Camada | Tecnologia |
 |---|---|
 | Front-end | React 19 + TypeScript + Vite |
-| Estilização | CSS próprio com variáveis e tokens |
+| Estilização | CSS próprio com tokens (design system CHAVEIA) |
+| Fontes | Archivo (corpo) + Silkscreen (display) — self-hosted |
 | Banco de dados | PostgreSQL via Supabase |
 | Autenticação | Supabase Auth (email e senha) |
 | Segurança | Row Level Security (RLS) + RPCs transacionais |
@@ -43,6 +44,20 @@ Vale destacar a distribuição real do código: **49,5% TypeScript, 44,5% PL/pgS
 - Usuários comuns não podem criar torneios por padrão — precisam solicitar permissão e aguardar aprovação do admin.
 - Permissão de criação é revogável: admin pode ativar e desativar a qualquer momento, com registro em auditoria.
 - RLS em todas as tabelas sensíveis: políticas no banco bloqueiam operações indevidas independente do que a interface permita.
+
+### Avatares
+
+Perfis usam avatares pré-definidos com chaves:
+
+| Chave | Label | Iniciais |
+|---|---|---|
+| `avatar_arcade_blue` | Arcade azul | P1 |
+| `avatar_arcade_green` | Arcade verde | P2 |
+| `avatar_arcade_gold` | Arcade dourado | GG |
+| `avatar_competition` | Competição | VS |
+| `avatar_academic` | Clássico | OG |
+
+> **Atenção:** se você está migrando de uma instalação anterior que usava `avatar_utfpr_*`, execute a migration `supabase/migrations/20260611000000_rename_avatar_keys_chaveia.sql` no Supabase antes do deploy.
 
 ### Torneios e participantes
 
@@ -81,9 +96,17 @@ Vale destacar a distribuição real do código: **49,5% TypeScript, 44,5% PL/pgS
 
 ---
 
-## Arquitetura
+## Design system
 
-O projeto é organizado em camadas com separação clara de responsabilidades:
+A Chaveia usa uma estética **neo-brutalista arcade** — bordas pretas grossas, sombras sólidas deslocadas, cores saturadas. Os tokens ficam em `src/index.css` e os componentes em `src/App.css`.
+
+Fontes self-hosted (sem CDN externo):
+- **Silkscreen** — wordmark, eyebrows, badges de fase, posições de ranking.
+- **Archivo** — todo o resto, títulos em peso 900.
+
+---
+
+## Arquitetura
 
 ```
 src/
@@ -102,9 +125,9 @@ src/
    └─ algorithms/    # Testes das funções de domínio
 ```
 
-**Decisão central:** a camada de domínio (`src/domain/`) não importa React, CSS, rotas ou o SDK do Supabase. São funções TypeScript puras, testáveis isoladamente. Isso garante que a lógica de torneio possa ser testada sem precisar montar interface ou simular banco.
+**Decisão central:** a camada de domínio (`src/domain/`) não importa React, CSS, rotas ou o SDK do Supabase. São funções TypeScript puras, testáveis isoladamente.
 
-**Segurança em duas camadas:** a interface esconde ou desabilita ações indisponíveis para melhorar a UX. Mas o banco é a fonte de verdade — nenhuma operação sensível passa sem validação por RLS, policy ou RPC.
+**Segurança em duas camadas:** a interface esconde ou desabilita ações indisponíveis. O banco é a fonte de verdade — nenhuma operação sensível passa sem validação por RLS, policy ou RPC.
 
 ---
 
@@ -190,6 +213,16 @@ O roadmap completo está em `docs/12-roadmap-mvp.md`. As prioridades imediatas a
 - Avisos preventivos de bloqueios administrativos na interface.
 
 Funcionalidades planejadas para versões futuras: notificações, exportação de dados, sistema suíço, integração com calendário, convites para membros de equipe e captura de metadados de requisição nos logs de auditoria.
+
+---
+
+## Passos para deploy
+
+Ao fazer o primeiro deploy da Chaveia após migração de uma instalação anterior:
+
+1. **Supabase:** execute `supabase/migrations/20260611000000_rename_avatar_keys_chaveia.sql` via SQL Editor para renomear as chaves de avatar.
+2. **Cloudflare Pages (ou outro host):** crie um novo projeto apontando para o repositório. O subdomínio anterior (`utfpr-torneios.pages.dev`) precisa ser substituído por um novo (ex.: `chaveia.pages.dev`).
+3. **GitHub:** renomeie o repositório se desejar (`UTFPR-TORNEIOS` → `chaveia`).
 
 ---
 

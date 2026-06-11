@@ -1,8 +1,8 @@
-# UTFPR Torneios - Visao geral
+# Chaveia - Visao geral
 
 ## Nome do projeto
 
-UTFPR Torneios é um sistema web acadêmico para organização de torneios, e-sports, jogos universitários e competições gerais no contexto da UTFPR.
+Chaveia é um sistema web acadêmico para organização de torneios, e-sports, jogos universitários e competições gerais no contexto da plataforma.
 
 ## Problema que resolve
 
@@ -18,7 +18,7 @@ O projeto centraliza essas etapas em uma plataforma única, com regras explícit
 - Participantes, jogadores, capitães e equipes.
 - Público que deseja acompanhar tabelas, partidas e resultados.
 
-## Contexto UTFPR
+## Contexto a plataforma
 
 O sistema deve refletir um ambiente universitário: confiável, claro, acessível e adequado para uso em disciplinas, eventos acadêmicos, semanas tecnológicas, campeonatos internos e competições de e-sports.
 

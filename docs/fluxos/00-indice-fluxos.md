@@ -1,6 +1,6 @@
 # Indice de fluxos
 
-Esta pasta detalha fluxos de uso, casos de uso, falhas, seguranca e pendencias do sistema UTFPR Torneios. A analise foi feita a partir de `AGENTS.md`, `README.md`, `docs/`, `supabase/schema.sql`, `src/App.tsx`, `src/services/`, `src/pages/` e `src/components/`.
+Esta pasta detalha fluxos de uso, casos de uso, falhas, seguranca e pendencias do sistema Chaveia. A analise foi feita a partir de `AGENTS.md`, `README.md`, `docs/`, `supabase/schema.sql`, `src/App.tsx`, `src/services/`, `src/pages/` e `src/components/`.
 
 ## Status geral
 

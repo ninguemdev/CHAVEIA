@@ -74,7 +74,7 @@ Visitante acessa `#/cadastro`, `#/login`, `#/recuperar-senha` ou rota protegida.
 
 - `session`: presente/ausente.
 - `profiles.role`: `admin`, `user`.
-- `avatar_key`: `avatar_utfpr_blue`, `avatar_utfpr_green`, `avatar_utfpr_gold`, `avatar_competition`, `avatar_academic`.
+- `avatar_key`: `avatar_arcade_blue`, `avatar_arcade_green`, `avatar_arcade_gold`, `avatar_competition`, `avatar_academic`.
 - `profileError`, loading e sucesso no front-end.
 
 ## Dados lidos

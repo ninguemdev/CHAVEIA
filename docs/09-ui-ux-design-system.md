@@ -2,7 +2,7 @@
 
 ## Personalidade visual
 
-O produto deve parecer institucional, tecnologico, moderno, confiavel e adequado para organizacao academica de torneios. A identidade visual parte da UTFPR: grafite/preto como base institucional e amarelo como destaque de acao, sem transformar a interface em um tema escuro nem em uma pagina toda amarela.
+O produto deve parecer institucional, tecnologico, moderno, confiavel e adequado para organizacao academica de torneios. A identidade visual parte da a plataforma: grafite/preto como base institucional e amarelo como destaque de acao, sem transformar a interface em um tema escuro nem em uma pagina toda amarela.
 
 O visual deve apoiar torneios, e-sports e gestao academica com superficies claras, bordas sutis, sombras leves, dados bem escaneaveis e elementos tecnicos discretos, como linhas e grid de fundo.
 
@@ -40,7 +40,7 @@ Tokens globais ficam em `src/index.css`.
 
 ## Uso de cor
 
-- Amarelo UTFPR: CTA principal, foco, destaques de chave, vencedores, detalhes de marca e indicadores importantes.
+- Laranja Chaveia: CTA principal, foco, destaques de chave, vencedores, detalhes de marca e indicadores importantes.
 - Preto/grafite: marca, texto principal, header de identidade, contraste em placares e areas institucionais.
 - Fundo: claro e levemente quente para reduzir dureza visual.
 - Superficies: branco/off-white com borda neutra e sombra leve.
@@ -82,7 +82,7 @@ Tokens globais ficam em `src/index.css`.
 
 Variantes:
 
-- `button-primary`: amarelo UTFPR com texto grafite. Usar para acao principal.
+- `button-primary`: amarelo a plataforma com texto grafite. Usar para acao principal.
 - `button-secondary`: superficie clara com borda grafite sutil. Usar para acao importante secundaria.
 - `button-ghost`: baixo peso visual. Usar para acoes auxiliares.
 - `button-danger`: vermelho funcional. Usar para acao destrutiva quando houver classe especifica.
@@ -149,7 +149,7 @@ Regras:
 - Transicoes entre 120ms e 260ms.
 - Hover indica clicabilidade sem deslocar layout.
 - `prefers-reduced-motion` reduz animacoes.
-- Foco visivel usa amarelo UTFPR com contraste perceptivel.
+- Foco visivel usa amarelo a plataforma com contraste perceptivel.
 
 ## Componentes especificos
 
