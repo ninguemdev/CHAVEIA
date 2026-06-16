@@ -43,12 +43,14 @@ function isCurrentRoute(currentHash: string, href: string) {
 export function SiteHeader({ subtitle = 'torneios e e-sports' }: SiteHeaderProps) {
   const { session, isAdmin, canCreateTournaments } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false)
   const [currentHash, setCurrentHash] = useState(() => window.location.hash || '#home')
 
   useEffect(() => {
     function handleHashChange() {
       setCurrentHash(window.location.hash || '#home')
       setIsMobileMenuOpen(false)
+      setIsHeaderHidden(false)
     }
 
     window.addEventListener('hashchange', handleHashChange)
@@ -57,12 +59,59 @@ export function SiteHeader({ subtitle = 'torneios e e-sports' }: SiteHeaderProps
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsMobileMenuOpen(false)
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false)
+        setIsHeaderHidden(false)
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  useEffect(() => {
+    const mobileHeaderQuery = window.matchMedia('(max-width: 39.999rem)')
+    let lastScrollY = window.scrollY
+    let ticking = false
+
+    function updateHeaderVisibility() {
+      const currentScrollY = window.scrollY
+      const delta = currentScrollY - lastScrollY
+
+      if (!mobileHeaderQuery.matches) {
+        setIsHeaderHidden(false)
+      } else if (isMobileMenuOpen || currentScrollY < 16) {
+        setIsHeaderHidden(false)
+      } else if (delta > 8 && currentScrollY > 96) {
+        setIsHeaderHidden(true)
+      } else if (delta < -8) {
+        setIsHeaderHidden(false)
+      }
+
+      lastScrollY = Math.max(currentScrollY, 0)
+      ticking = false
+    }
+
+    function handleScroll() {
+      if (ticking) return
+
+      ticking = true
+      window.requestAnimationFrame(updateHeaderVisibility)
+    }
+
+    function handleViewportChange() {
+      lastScrollY = window.scrollY
+      if (!mobileHeaderQuery.matches) setIsHeaderHidden(false)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    mobileHeaderQuery.addEventListener('change', handleViewportChange)
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      mobileHeaderQuery.removeEventListener('change', handleViewportChange)
+    }
+  }, [isMobileMenuOpen])
 
   const links = [
     ...publicLinks,
@@ -81,7 +130,7 @@ export function SiteHeader({ subtitle = 'torneios e e-sports' }: SiteHeaderProps
   })
 
   return (
-    <header className="app-header">
+    <header className={isHeaderHidden ? 'app-header is-scroll-hidden' : 'app-header'}>
       <a className="brand" href="#home">
         <span>
           <span className="brand-title">CHAVEIA</span>

@@ -239,6 +239,7 @@ Todo elemento interativo deve mostrar foco:
 
 - Header global visivel nas paginas principais.
 - Menu mobile do header operavel por mouse e teclado.
+- Em mobile, o header pode recolher com animacao simples ao rolar para baixo e reaparecer ao rolar para cima ou voltar ao topo.
 - Botao "Voltar" antes do `h1` nas paginas internas, exceto home.
 - Paginas de autenticacao com layout simplificado mantem link para home.
 - O botao "Voltar" tenta usar historico do navegador e cai em rota segura quando necessario.
