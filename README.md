@@ -224,6 +224,8 @@ Ao fazer o primeiro deploy da Chaveia após migração de uma instalação anter
 2. **Cloudflare Pages (ou outro host):** crie um novo projeto apontando para o repositório. O subdomínio anterior (`utfpr-torneios.pages.dev`) precisa ser substituído por um novo (ex.: `chaveia.pages.dev`).
 3. **GitHub:** renomeie o repositório se desejar (`UTFPR-TORNEIOS` → `chaveia`).
 
+A imagem pública de compartilhamento social fica em `public/og-image.png` e é referenciada pelas tags Open Graph do `index.html`.
+
 ---
 
 ## Segurança
